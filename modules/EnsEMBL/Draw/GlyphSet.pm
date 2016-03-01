@@ -46,6 +46,7 @@ use EnsEMBL::Draw::Glyph::Arc;
 
 use Bio::EnsEMBL::Registry;
 use Bio::EnsEMBL::DnaDnaAlignFeature;
+use Bio::EnsEMBL::IO::Writer;
 
 use EnsEMBL::Web::Utils::RandomString qw(random_string);
 
@@ -375,6 +376,14 @@ sub bg_href {
   return $bg_href;
 }
 
+sub writer {
+  my $self = shift;
+  return $self->{'writer'} if $self->{'writer'};
+  my $format = $self->{'config'}->get_parameter('export_format');
+  my $filename = 'test';
+  $self->{'writer'} = Bio::EnsEMBL::IO::Writer->new($format, $filename, $self->{'config'}->hub->species_defs);
+  return $self->{'writer'};
+}
 
 ############### GENERIC RENDERING ####################
 
