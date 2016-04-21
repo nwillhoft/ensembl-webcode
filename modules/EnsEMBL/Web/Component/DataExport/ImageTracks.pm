@@ -58,7 +58,8 @@ sub content {
                 });
 
   ## Sequence sub-form
-  my $seq_fieldset = $form->add_fieldset({'legend' => 'Download sequence (FASTA)'});
+  my $seq_fieldset  = $form->add_fieldset({'legend' => 'Download sequence (FASTA)'});
+  $self->add_subhead($seq_fieldset, 'Region');
 
   $seq_fieldset->add_field({
                             'label' => 'Coordinates',
@@ -81,6 +82,7 @@ sub content {
                             'value' => '0',
                           });
 
+  $self->add_subhead($seq_fieldset, 'Output options');
   my $masking = [
                   {'value' => 'none', 'caption' => 'None'},
                   {'value' => 'soft', 'caption' => 'Repeat masked (soft)'},
@@ -112,6 +114,8 @@ sub content {
 
   ## Features sub-form
   my $feats_fieldset = $form->add_fieldset({'legend' => 'Download features'});
+
+  $self->add_active_tracks($feats_fieldset);
 
   ## Big data sub-form
   my $bigdata_fieldset = $form->add_fieldset;
@@ -154,6 +158,27 @@ sub default_file_name {
   }
 
   return $name;
+}
+
+sub add_subhead {
+  my ($self, $fieldset, $text) = @_;
+  my $div           = $fieldset->append_child('div');
+  $div->append_child('h3', { class => 'config_header', inner_HTML => $text});
+}
+
+sub add_active_tracks {
+  my ($self, $fieldset) = @_;
+  my $hub = $self->hub;
+
+  my $vc      = $hub->get_viewconfig($hub->param('component'), $hub->param('data_type'));
+  return unless $vc;
+
+  my $ic_name = $vc->image_config;
+  if ($ic_name) {
+    my $ic = $hub->get_imageconfig($ic_name);
+
+    ## Add all the exportable tracks as checkboxes
+  }
 }
 
 1;
