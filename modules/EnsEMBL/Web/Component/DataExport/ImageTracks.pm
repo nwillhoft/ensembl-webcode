@@ -114,6 +114,7 @@ sub content {
 
   ## Features sub-form
   my $feats_fieldset = $form->add_fieldset({'legend' => 'Download features'});
+  $self->add_subhead($feats_fieldset, 'Tracks to export');
 
   $self->add_active_tracks($feats_fieldset);
 
@@ -178,6 +179,13 @@ sub add_active_tracks {
     my $ic = $hub->get_imageconfig($ic_name);
 
     ## Add all the exportable tracks as checkboxes
+    foreach my $track ($ic->get_tracks) {
+      
+      ## Skip tracks that are off (including matrix tracks currently set to 'default')
+      next if ($track->get('display') && ($track->get('display') eq 'off' || $track->get('display') eq 'default'));
+      next unless $track->get('can_export');
+      #warn ">>> TRACK ".$track->get('caption')." IS ON!";
+    }
   }
 }
 
