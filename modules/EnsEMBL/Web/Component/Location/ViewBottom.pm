@@ -63,6 +63,8 @@ sub content {
   
   my $info  = $self->_add_object_track($image_config);
   my $image = $self->new_image($slice, $image_config, $object->highlights);
+
+  $image->{'data_export'} = 'ImageTracks';
   
 	return if $self->_export_image($image);
   
