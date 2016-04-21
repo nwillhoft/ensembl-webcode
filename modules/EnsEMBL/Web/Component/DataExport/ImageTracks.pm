@@ -57,6 +57,31 @@ sub content {
   ## Features sub-form
 
   ## Big data sub-form
+  my $bigdata_fieldset = $form->add_fieldset;
+
+  my $ftp_base = sprintf '%s/release-%s', $self->hub->species_defs->ENSEMBL_FTP_URL, $self->hub->species_defs->ENSEMBL_VERSION;
+  my $species = lc($self->hub->species_defs->SPECIES_URL);
+  my $text = sprintf '<h2>Large datasets</h2>
+<p>For <b>whole chromosome sequences</b> and <b>complete feature sets</b>, visit our <a href="%s">FTP site</a> for:</p>
+<ul>
+<li><a href="%s/fasta/%s">FASTA</a> sequences</li>
+<li>Gene sets in <a href="%s/gtf/%s">GTF</a> or <a href="%s/gff3/%s">GFF3</a> format</li>
+<li>Variants in <a href="%s/variation/vcf/%s">VCF</a> format</li>
+</ul>
+<p>and much more.</p>',
+
+$ftp_base,
+$ftp_base, $species,
+$ftp_base, $species,
+$ftp_base, $species,
+$ftp_base, $species,
+;
+
+  if ($self->hub->species_defs->ENSEMBL_MART_ENABLED) {
+    $text .= '<p>For <b>custom datasets in CSV or Excel format</b>, try <a href="/biomart/martview">BioMart</a>.</p>';
+  }
+
+  $bigdata_fieldset->add_notes({'text' => $text});
 
   return $form->render;
 }
