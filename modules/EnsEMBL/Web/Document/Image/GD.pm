@@ -28,10 +28,9 @@ use JSON;
 use HTML::Entities qw(encode_entities);
 
 use EnsEMBL::Draw::VDrawableContainer;
-
 use EnsEMBL::Web::File::Dynamic::Image;
-
 use EnsEMBL::Web::Exceptions;
+use Bio::EnsEMBL::IO::Writer;
 
 use parent qw(EnsEMBL::Web::Document::Image);
 
@@ -609,6 +608,62 @@ sub render {
   $self->hub->species_defs->timer_push('Image->render ending', undef, 'draw');
   
   return $html;
+}
+
+sub render_text {
+  my ($self, $format) = @_;
+
+  return unless $self->drawable_container;
+
+  my $hub       = $self->hub;
+  my $filename  = $hub->param('filename') || 'data_exported_from_image.'.lc($format);
+  my $data      = [];
+
+  my $writer    = Bio::EnsEMBL::IO::Writer->new($format, $filename, $hub->species_defs);
+
+  ## We don't want to create the entire image, just get the data for the glyphsets we're exporting
+  ## This is basically a very cut-down version of DrawableContainer, omitting all the drawing stuff!
+
+  my $prefix = $self->drawable_container->{'prefix'};
+  ## Loop through each pair of "container / config"s
+  foreach my $CC (@{$self->drawable_container->{'contents'}}) {
+    my ($container, $config) = @$CC;
+    next unless ($container && $config);
+
+    foreach my $track_config (@{$config->glyphset_configs}) {
+
+      # next unless (we want to export this track)
+
+      my $classname = "$prefix::GlyphSet::" . $track_config->get('glyphset');
+
+      next unless $self->dynamic_use($classname);
+
+        my $glyphset;
+        my $strand = $track_config->get('drawing_strand') || $track_config->get('strand');
+
+        ## create a new glyphset for this track
+        eval {
+          $glyphset = $classname->new({
+            container   => $container,
+            config      => $config,
+            my_config   => $track_config,
+            strand      => $strand eq 'f' ? 1 : -1,
+            display     => 'text',
+          });
+        };
+        next if ($@ || !$glyphset);
+
+        my $track_data = $glyphset->get_data;
+
+        if ($track_data) {
+          warn ">>> TRACK DATA $track_data";
+          #$writer->output_dataset($track_data);
+        }
+      }
+    }
+  }
+  ## Where do we download the completed file from?
+  return ''; #$writer->file_location;
 }
 
 1;
