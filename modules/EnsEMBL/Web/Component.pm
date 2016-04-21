@@ -685,9 +685,10 @@ sub _export_image {
   my $scale = abs($params{'s'}) || 1;
   my $contrast = abs($params{'c'}) || 1;
 
-  my %formats = EnsEMBL::Web::Constants::IMAGE_EXPORT_FORMATS;
+  my %image_formats = EnsEMBL::Web::Constants::IMAGE_EXPORT_FORMATS;
+  my %text_formats  = EnsEMBL::Web::Constants::USERDATA_FORMATS;
   
-  if ($formats{$format}) {
+  if ($image_formats{$format}) {
     $image->drawable_container->{'config'}->set_parameter('sf',$scale);
     $image->drawable_container->{'config'}->set_parameter('contrast',$contrast);
     
@@ -711,6 +712,10 @@ sub _export_image {
     }
 
     return 1;
+  }
+  elsif ($text_formats{$format} && $text_formats{$format}{'image_export'}) {
+    my $file = $image->render_text($format);
+    $hub->param('file', $file);
   }
   
   return 0;
