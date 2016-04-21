@@ -36,7 +36,7 @@ sub content {
   my $self  = shift;
   my $hub   = $self->hub;
 
-  my $form = $self->new_form({'id' => 'export', 'action' => $hub->url({'action' => 'SelectInterface',  'function' => '', '__clear' => 1}), 'method' => 'post'});
+  my $form = $self->new_form({'id' => 'export', 'action' => $hub->url({'action' => 'OutputTracks',  'function' => '', '__clear' => 1}), 'method' => 'post'});
 
   ## We should encourage users to download zipped data if the region is large
   my $location = $hub->param('r');
@@ -82,9 +82,9 @@ sub content {
                           });
 
   my $masking = [
-                  {'value' => 'none', 'label' => 'None'},
-                  {'value' => 'soft', 'label' => 'Repeat masked (soft)'},
-                  {'value' => 'hard', 'label' => 'Repeat masked (hard)'},
+                  {'value' => 'none', 'caption' => 'None'},
+                  {'value' => 'soft', 'caption' => 'Repeat masked (soft)'},
+                  {'value' => 'hard', 'caption' => 'Repeat masked (hard)'},
                 ];
   $seq_fieldset->add_field({
                             'label'   => 'Masking',
@@ -107,6 +107,8 @@ sub content {
                             'selected'  => $should_zip ? 'selected' : '',
                             'shortnote' => 'We recommend zipping your file if the region is large',
                           });
+
+  $seq_fieldset->add_button('type' => 'Submit', 'name' => 'submit', 'value' => 'Download', 'class' => 'download');
 
   ## Features sub-form
   my $feats_fieldset = $form->add_fieldset({'legend' => 'Download features'});
