@@ -56,6 +56,9 @@ sub populate_tree {
   ## External alignments
   $self->create_node('Emboss', 'Alignment', ['emboss', 'EnsEMBL::Web::Component::DataExport::Emboss']);
 
+  ## Image export
+  $self->create_node('ImageTracks', '', ['image_tracks', 'EnsEMBL::Web::Component::DataExport::ImageTracks']);
+
   ## Output nodes
   $self->create_node('Output',  '', [], { 'command' => 'EnsEMBL::Web::Command::DataExport::Output'});
   $self->create_node('Error', 'Output Error', ['error', 'EnsEMBL::Web::Component::DataExport::Error']);
