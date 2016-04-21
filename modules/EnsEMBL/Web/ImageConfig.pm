@@ -2250,10 +2250,11 @@ sub add_marker_features {
   
   foreach (@$keys) {
     $self->generic_add($menu, $key, "marker_${key}_$_", $data->{$_}, {
-      glyphset => 'marker',
-      labels   => 'on',
-      colours  => $colours,
-      strand   => 'r',
+      glyphset    => 'marker',
+      labels      => 'on',
+      colours     => $colours,
+      strand      => 'r',
+      can_export  => 1,
     });
   }
 }
