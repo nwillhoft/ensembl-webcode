@@ -638,27 +638,26 @@ sub render_text {
 
       next unless $self->dynamic_use($classname);
 
-        my $glyphset;
-        my $strand = $track_config->get('drawing_strand') || $track_config->get('strand');
+      my $glyphset;
+      my $strand = $track_config->get('drawing_strand') || $track_config->get('strand');
 
-        ## create a new glyphset for this track
-        eval {
-          $glyphset = $classname->new({
-            container   => $container,
-            config      => $config,
-            my_config   => $track_config,
-            strand      => $strand eq 'f' ? 1 : -1,
-            display     => 'text',
-          });
-        };
-        next if ($@ || !$glyphset);
+      ## create a new glyphset for this track
+      eval {
+        $glyphset = $classname->new({
+          container   => $container,
+          config      => $config,
+          my_config   => $track_config,
+          strand      => $strand eq 'f' ? 1 : -1,
+          display     => 'text',
+        });
+      };
+      next if ($@ || !$glyphset);
 
-        my $track_data = $glyphset->get_data;
+      my $track_data = $glyphset->get_data;
 
-        if ($track_data) {
-          warn ">>> TRACK DATA $track_data";
-          #$writer->output_dataset($track_data);
-        }
+      if ($track_data) {
+        warn ">>> TRACK DATA $track_data";
+        #$writer->output_dataset($track_data);
       }
     }
   }
