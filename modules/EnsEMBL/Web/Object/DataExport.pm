@@ -64,7 +64,7 @@ sub create_component {
     warn "!!! Could not create component $class";
     $error = 'Export not available';
   }
-  elsif (!$component->can('export_options')) {
+  elsif (!$component->exportable && !$component->can('export_options')) {
     warn "!!! Export not implemented in component $class";
     $error = 'Export not available';
   }
