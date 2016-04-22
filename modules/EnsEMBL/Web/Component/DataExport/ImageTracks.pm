@@ -118,6 +118,30 @@ sub content {
 
   my $track_count = $self->add_active_tracks($feats_fieldset);
   if ($track_count) {
+    $self->add_subhead($feats_fieldset, 'File options');
+
+    my $formats     = [];
+    my $format_info = EnsEMBL::Web::Constants::USERDATA_FORMATS;
+    foreach my $key (sort keys %$format_info) {
+      my $info = $format_info->{$key};
+      next unless $info->{'image_export'};
+      push @$formats, {'value' => $key, 'caption' => $info->{'label'}};
+    }
+
+    $feats_fieldset->add_field({
+                                'name'    => 'format',
+                                'label'   => 'File format',
+                                'type'    => 'Dropdown',
+                                'values'  => $formats,
+                              });
+
+    $feats_fieldset->add_field({
+                                'name'    => 'filename',
+                                'label'   => 'File name',
+                                'type'    => 'String',
+                                'value'  => $self->default_file_name,
+                              });
+
     $feats_fieldset->add_button('type' => 'Submit', 'name' => 'submit', 'value' => 'Download', 'class' => 'download');
   }
   else {
@@ -186,24 +210,45 @@ sub add_active_tracks {
   my $count = 0;
   if ($ic_name) {
     my $ic = $hub->get_imageconfig($ic_name);
+    if ($ic) {
+      my $tree = $ic->tree;
 
-    ## Add all the exportable tracks as checkboxes
-    foreach my $track ($ic->get_tracks) {
-      
-      ## Skip tracks that are off (including matrix tracks currently set to 'default')
-      next if ($track->get('display') && ($track->get('display') eq 'off' || $track->get('display') eq 'default'));
-      next unless $track->get('can_export');
-      $fieldset->add_field({
-                            'label'     => $track->get('caption'), 
-                            'type'      => 'Checkbox',
-                            'value'     => 1,
-                            'selected'  => 'selected',
-                            'class'     => 'track-list',
-                            'no_colon'  => 1,
-                          });
-      $count++;
+      foreach my $menu (@{$tree->child_nodes}) {
+        my @tracks;
+        foreach my $submenu (@{$menu->child_nodes}) {
+          foreach my $track (@{$submenu->child_nodes}) {
+            ## Skip tracks that are off (including matrix tracks currently set to 'default')
+            next if ($track->get('display') && ($track->get('display') eq 'off' || $track->get('display') eq 'default'));
+            next unless $track->get('can_export');
+            push @tracks, $track;
+          }
+        }
+        if (scalar(@tracks)) {
+          $fieldset->append_child('h4', { inner_HTML => $menu->get('caption')}); 
+          foreach my $track (@tracks) {
+            ## If exporting a single track via the menu, turn everything else off
+            my $selected = $hub->param('track') ? 0 : 1;
+
+            my $class = 'track-list';
+            my $is_var = $menu eq 'variation' ? 1 : 0;
+            $class .= ' _var' if $is_var; 
+            my $params = {
+                          'name'      => $track->get('id'),
+                          'label'     => $track->get('caption'), 
+                          'type'      => 'Checkbox',
+                          'value'     => 1,
+                          'class'     => $class,
+                          'no_colon'  => 1,
+                          };
+            $params->{'selected'} = 'selected' if $selected;
+            $fieldset->add_field($params);
+            $count++;
+          }
+        }
+      }
     }
   }
+
   return $count;
 }
 
