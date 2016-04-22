@@ -66,6 +66,7 @@ sub new {
     mcacheable    => 1,
     ajaxable      => 0,
     configurable  => 0,
+    exportable    => 0,
     has_image     => 0,
     format        => undef,
     html_format   => undef,
@@ -183,6 +184,14 @@ sub configurable {
   my $self = shift;
   $self->{'configurable'} = shift if @_;
   return $self->{'configurable'};
+}
+
+sub exportable {
+  ## @accessor
+  ## @return Boolean
+  my $self = shift;
+  $self->{'exportable'} = shift if @_;
+  return $self->{'exportable'};
 }
 
 sub has_image {
