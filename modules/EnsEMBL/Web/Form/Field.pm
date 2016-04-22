@@ -81,7 +81,7 @@ sub configure {
   my ($self, $params) = @_;
 
   $self->set_attribute('class', $params->{'field_class'}) if exists $params->{'field_class'};
-  $self->label($params->{'label'}, $params->{'helptip'})  if exists $params->{'label'};
+  $self->label($params->{'label'}, $params->{'helptip'}, $params->{'no_colon'})  if exists $params->{'label'};
   $self->head_notes($params->{'head_notes'})              if exists $params->{'head_notes'};
   $self->foot_notes($params->{'notes'})                   if exists $params->{'notes'};
   $self->add_element($_, $params->{'inline'} || 0)        for @{$params->{'elements'} || []};
@@ -94,26 +94,24 @@ sub label {
   ## @param String innerHTML for label
   ## @param Helptip text
   ## @return DOM::Node::Element::Label object
-  my $self = shift;
+  my ($self, $inner_HTML, $helptip, $no_colon) = @_;
   my $label = $self->first_child && $self->first_child->node_name eq 'label'
     ? $self->first_child
     : $self->prepend_child('label');
   $label->set_attribute('class', $self->CSS_CLASS_LABEL);
-  if (@_) {
-    my $inner_HTML = shift;
-    if (@_ && $_[0]) {
-      $label->append_children({
-        'node_name'   => 'span',
-        'class'       => '_ht ht',
-        'title'       => $_[0],
-        'inner_HTML'  => $inner_HTML =~ s/:$//r
-      }, {
-        'node_name'   => 'text',
-        'text'        => ':'
-      });
-    } else {
-      $label->inner_HTML($inner_HTML =~ s/:?$/:/r);
-    }
+  if ($helptip) {
+    $label->append_children({
+      'node_name'   => 'span',
+      'class'       => '_ht ht',
+      'title'       => $$helptip,
+      'inner_HTML'  => $inner_HTML =~ s/:$//r,
+    }, {
+      'node_name'   => 'text',
+      'text'        => ':'
+    });
+  } else {
+    my $label_HTML = $no_colon ? $inner_HTML =~ s/:$//r : $inner_HTML =~ s/:?$/:/r  ;
+    $label->inner_HTML($label_HTML);
   }
   return $label;
 }
