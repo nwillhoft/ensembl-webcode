@@ -113,10 +113,18 @@ sub content {
   $seq_fieldset->add_button('type' => 'Submit', 'name' => 'submit', 'value' => 'Download', 'class' => 'download');
 
   ## Features sub-form
-  my $feats_fieldset = $form->add_fieldset({'legend' => 'Download features'});
+  my $feats_fieldset = $form->add_fieldset({'legend' => 'Download features', 'class' => 'track-list'});
   $self->add_subhead($feats_fieldset, 'Tracks to export');
 
-  $self->add_active_tracks($feats_fieldset);
+  my $track_count = $self->add_active_tracks($feats_fieldset);
+  if ($track_count) {
+    $feats_fieldset->add_button('type' => 'Submit', 'name' => 'submit', 'value' => 'Download', 'class' => 'download');
+  }
+  else {
+    my $div = $feats_fieldset->append_child('div');
+    $div->append_child('p', { inner_HTML => 'You do not have any exportable tracks turned on.'});
+    
+  }
 
   ## Big data sub-form
   my $bigdata_fieldset = $form->add_fieldset;
@@ -175,6 +183,7 @@ sub add_active_tracks {
   return unless $vc;
 
   my $ic_name = $vc->image_config;
+  my $count = 0;
   if ($ic_name) {
     my $ic = $hub->get_imageconfig($ic_name);
 
@@ -184,9 +193,18 @@ sub add_active_tracks {
       ## Skip tracks that are off (including matrix tracks currently set to 'default')
       next if ($track->get('display') && ($track->get('display') eq 'off' || $track->get('display') eq 'default'));
       next unless $track->get('can_export');
-      #warn ">>> TRACK ".$track->get('caption')." IS ON!";
+      $fieldset->add_field({
+                            'label'     => $track->get('caption'), 
+                            'type'      => 'Checkbox',
+                            'value'     => 1,
+                            'selected'  => 'selected',
+                            'class'     => 'track-list',
+                            'no_colon'  => 1,
+                          });
+      $count++;
     }
   }
+  return $count;
 }
 
 1;
