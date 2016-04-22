@@ -61,6 +61,7 @@ sub populate_tree {
 
   ## Output nodes
   $self->create_node('Output',  '', [], { 'command' => 'EnsEMBL::Web::Command::DataExport::Output'});
+  $self->create_node('Tracks',  '', [], { 'command' => 'EnsEMBL::Web::Command::DataExport::Tracks'});
   $self->create_node('Error', 'Output Error', ['error', 'EnsEMBL::Web::Component::DataExport::Error']);
 }
 
