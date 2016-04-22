@@ -36,7 +36,7 @@ sub content {
   my $self  = shift;
   my $hub   = $self->hub;
 
-  my $form = $self->new_form({'id' => 'export', 'action' => $hub->url({'action' => 'OutputTracks',  'function' => '', '__clear' => 1}), 'method' => 'post'});
+  my $form = $self->new_form({'id' => 'export', 'action' => $hub->url({'action' => 'Tracks',  'function' => '', '__clear' => 1}), 'method' => 'post'});
 
   ## We should encourage users to download zipped data if the region is large
   my $location = $hub->param('r');
@@ -56,6 +56,12 @@ sub content {
                 'name'    => 'datatype',
                 'values'  => $datatypes,
                 });
+
+  ## Hidden fields needed for redirection to image output
+  ## Just pass everything, on the assumption that the button only passes useful params
+  foreach my $p ($hub->param) {
+    $datatype_fieldset->add_hidden({'name' => $p, 'value' => $hub->param($p)});
+  }
 
   ## Sequence sub-form
   my $seq_fieldset  = $form->add_fieldset({'legend' => 'Download sequence (FASTA)', 'class' => '_stt_sequence hide'});
