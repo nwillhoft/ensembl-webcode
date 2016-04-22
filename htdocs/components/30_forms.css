@@ -470,3 +470,18 @@ form.freeform-stt fieldset .form-field .ff-label {
 }
 
 form.freeform-stt label { font-weight:bold; }
+
+/* Track list for export interface */
+
+fieldset.track-list .form-field .ff-right .ff-checklist {
+  padding-left: 0;
+  position: absolute;
+  left: 10px!important;
+}
+
+fieldset.track-list .form-field .ff-label {
+  margin-left: 30px!important;
+  padding-top: 6px!important;
+  font-weight: normal!important;
+}
+
