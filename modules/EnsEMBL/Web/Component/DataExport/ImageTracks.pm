@@ -110,6 +110,7 @@ sub content {
 
   $seq_fieldset->add_field({
                             'label'     => 'Compressed (gzip)',
+                            'name'      => 'compression',
                             'type'      => 'Checkbox',
                             'value'     => 1,
                             'selected'  => $should_zip ? 'selected' : '',
@@ -126,7 +127,7 @@ sub content {
   if ($track_count) {
     $self->add_subhead($feats_fieldset, 'File options');
 
-    my $formats     = [];
+    my $formats     = [{'value' => '', 'caption' => '-- Choose --'}];
     my $format_info = EnsEMBL::Web::Constants::USERDATA_FORMATS;
     foreach my $key (sort keys %$format_info) {
       my $info = $format_info->{$key};
@@ -139,13 +140,24 @@ sub content {
                                 'label'   => 'File format',
                                 'type'    => 'Dropdown',
                                 'values'  => $formats,
+                                'class'   => '_stt',
                               });
 
     $feats_fieldset->add_field({
-                                'name'    => 'filename',
-                                'label'   => 'File name',
-                                'type'    => 'String',
-                                'value'  => $self->default_file_name,
+                                'name'      => 'filename',
+                                'label'     => 'File name',
+                                'type'      => 'String',
+                                'value'     => $self->default_file_name,
+                                'shortnote' => '',
+                              });
+
+    $feats_fieldset->add_field({
+                                'label'     => 'Compressed (gzip)',
+                                'name'      => 'compression',
+                                'type'      => 'Checkbox',
+                                'value'     => 1,
+                                'selected'  => $should_zip ? 'selected' : '',
+                                'shortnote' => 'We recommend zipping your file if the region is large',
                               });
 
     $feats_fieldset->add_button('type' => 'Submit', 'name' => 'submit', 'value' => 'Download', 'class' => 'download');
@@ -155,6 +167,10 @@ sub content {
     $div->append_child('p', { inner_HTML => 'You do not have any exportable tracks turned on.'});
     
   }
+
+  ## Tip for features fieldset
+  my $div = $feats_fieldset->append_child({'node_name' => 'div', 'class' => 'info-box', 'width' => '50%'});
+  $div->append_child('p', { inner_HTML => 'Want more tracks? Add them to your image and try again.'});
 
   ## Big data sub-form
   my $bigdata_fieldset = $form->add_fieldset({'class' => '_stt_bigdata hidden'});
@@ -235,16 +251,15 @@ sub add_active_tracks {
             ## If exporting a single track via the menu, turn everything else off
             my $selected = $hub->param('track') ? 0 : 1;
 
-            my $class = 'track-list';
             my $is_var = $menu eq 'variation' ? 1 : 0;
-            $class .= ' _var' if $is_var; 
             my $params = {
-                          'name'      => $track->get('id'),
-                          'label'     => $track->get('caption'), 
-                          'type'      => 'Checkbox',
-                          'value'     => 1,
-                          'class'     => $class,
-                          'no_colon'  => 1,
+                          'name'        => $track->get('id'),
+                          'label'       => $track->get('caption'), 
+                          'type'        => 'Checkbox',
+                          'value'       => 1,
+                          'class'       => $is_var ? '_var' : '',
+                          'field_class' => 'track-list',
+                          'no_colon'    => 1,
                           };
             $params->{'selected'} = 'selected' if $selected;
             $fieldset->add_field($params);
