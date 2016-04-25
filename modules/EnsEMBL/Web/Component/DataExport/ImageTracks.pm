@@ -127,12 +127,14 @@ sub content {
   if ($track_count) {
     $self->add_subhead($feats_fieldset, 'File options');
 
-    my $formats     = [{'value' => '', 'caption' => '-- Choose --'}];
+    my $formats     = []; #{'value' => '', 'caption' => '-- Choose --'}];
     my $format_info = EnsEMBL::Web::Constants::USERDATA_FORMATS;
     foreach my $key (sort keys %$format_info) {
       my $info = $format_info->{$key};
       next unless $info->{'image_export'};
-      push @$formats, {'value' => $key, 'caption' => $info->{'label'}};
+      my $label = $info->{'label'};
+      $label = 'GTF' if $label =~ /GTF/;
+      push @$formats, {'value' => $key, 'caption' => $label};
     }
 
     $feats_fieldset->add_field({
@@ -140,13 +142,14 @@ sub content {
                                 'label'   => 'File format',
                                 'type'    => 'Dropdown',
                                 'values'  => $formats,
+                                'value'   => 'bed',
                               });
 
     $feats_fieldset->add_field({
                                 'name'      => 'filename',
                                 'label'     => 'File name',
                                 'type'      => 'String',
-                                'value'     => $self->default_file_name.'.',
+                                'value'     => $self->default_file_name.'.bed',
                               });
 
     $feats_fieldset->add_field({
