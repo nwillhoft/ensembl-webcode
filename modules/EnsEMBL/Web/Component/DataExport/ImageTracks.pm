@@ -140,15 +140,13 @@ sub content {
                                 'label'   => 'File format',
                                 'type'    => 'Dropdown',
                                 'values'  => $formats,
-                                'class'   => '_stt',
                               });
 
     $feats_fieldset->add_field({
                                 'name'      => 'filename',
                                 'label'     => 'File name',
                                 'type'      => 'String',
-                                'value'     => $self->default_file_name,
-                                'shortnote' => '',
+                                'value'     => $self->default_file_name.'.',
                               });
 
     $feats_fieldset->add_field({
