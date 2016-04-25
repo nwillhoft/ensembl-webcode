@@ -478,14 +478,13 @@ fieldset.form-intro label {
   font-size: 120%;
 }
 
-
-fieldset.track-list .form-field .ff-right .ff-checklist {
+div.track-list .ff-right .ff-checklist {
   padding-left: 0;
   position: absolute;
   left: 10px!important;
 }
 
-fieldset.track-list .form-field .ff-label {
+div.track-list .ff-label {
   margin-left: 30px!important;
   padding-top: 6px!important;
   font-weight: normal!important;
