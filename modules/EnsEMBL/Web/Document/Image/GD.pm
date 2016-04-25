@@ -29,6 +29,7 @@ use HTML::Entities qw(encode_entities);
 
 use EnsEMBL::Draw::VDrawableContainer;
 use EnsEMBL::Web::File::Dynamic::Image;
+use EnsEMBL::Web::Utils::DynamicLoader qw(dynamic_use);
 use EnsEMBL::Web::Exceptions;
 use Bio::EnsEMBL::IO::Writer;
 
@@ -616,7 +617,7 @@ sub render_text {
   return unless $self->drawable_container;
 
   my $hub       = $self->hub;
-  my $filename  = $hub->param('filename') || 'data_exported_from_image.'.lc($format);
+  my $filename  = $hub->param('name') || 'data_exported_from_image.'.lc($format);
   my $data      = [];
 
   my $writer    = Bio::EnsEMBL::IO::Writer->new($format, $filename, $hub->species_defs);
@@ -624,7 +625,6 @@ sub render_text {
   ## We don't want to create the entire image, just get the data for the glyphsets we're exporting
   ## This is basically a very cut-down version of DrawableContainer, omitting all the drawing stuff!
 
-  my $prefix = $self->drawable_container->{'prefix'};
   ## Loop through each pair of "container / config"s
   foreach my $CC (@{$self->drawable_container->{'contents'}}) {
     my ($container, $config) = @$CC;
@@ -634,9 +634,9 @@ sub render_text {
 
       # next unless (we want to export this track)
 
-      my $classname = "$prefix::GlyphSet::" . $track_config->get('glyphset');
+      my $classname = 'EnsEMBL::Draw::GlyphSet::'.$track_config->get('glyphset');
 
-      next unless $self->dynamic_use($classname);
+      next unless dynamic_use($classname, 1);
 
       my $glyphset;
       my $strand = $track_config->get('drawing_strand') || $track_config->get('strand');
@@ -651,12 +651,13 @@ sub render_text {
           display     => 'text',
         });
       };
-      next if ($@ || !$glyphset);
+      next if ($@ || !$glyphset || !$glyphset->can('get_data'));
+
+      ## TODO - only get data for tracks that have been selected in the form
 
       my $track_data = $glyphset->get_data;
 
       if ($track_data) {
-        warn ">>> TRACK DATA $track_data";
         #$writer->output_dataset($track_data);
       }
     }
