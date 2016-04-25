@@ -167,7 +167,7 @@ sub content {
   }
 
   ## Tip for features fieldset
-  my $div = $feats_fieldset->append_child({'node_name' => 'div', 'class' => 'info-box', 'width' => '50%'});
+  my $div = $feats_fieldset->append_child({'node_name' => 'div', 'class' => 'info-box box-centred'});
   $div->append_child('p', { inner_HTML => 'Want more tracks? Add them to your image and try again.'});
 
   ## Big data sub-form
