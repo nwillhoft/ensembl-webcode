@@ -82,7 +82,7 @@ sub handle_download {
   my $filename    = $hub->param('filename');
   my $format      = $hub->param('format');
   my $path        = $hub->param('file');
-  my $compression = $hub->param('compression');
+  my $compression = $hub->param('compression') || '';
   
   ## Strip double dots to prevent downloading of files outside tmp directory
   $path =~ s/\.\.//g;
