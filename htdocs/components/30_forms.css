@@ -88,6 +88,7 @@ label.ff-label {
 div.ff-right {
   padding-left: 50%;
 }
+
 div.form-field-scroll div.ff-right  {
   border: 1px solid [[PANEL_BORDER]];
   max-height: 400px;
@@ -471,7 +472,12 @@ form.freeform-stt fieldset .form-field .ff-label {
 
 form.freeform-stt label { font-weight:bold; }
 
-/* Track list for export interface */
+/* Export interface */
+
+fieldset.form-intro label {
+  font-size: 120%;
+}
+
 
 fieldset.track-list .form-field .ff-right .ff-checklist {
   padding-left: 0;

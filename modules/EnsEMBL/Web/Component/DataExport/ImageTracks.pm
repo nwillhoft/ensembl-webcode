@@ -44,7 +44,7 @@ sub content {
   my $should_zip = $end - $start > '500000' ? 1 : 0;
 
   ## First, the radio buttons for selection data type
-  my $datatype_fieldset = $form->add_fieldset;
+  my $datatype_fieldset = $form->add_fieldset({'class' => 'form-intro'});
   my $datatypes = [
                     {'value' => 'sequence', 'class' => '_stt', 'caption' => 'Sequence'},
                     {'value' => 'features', 'class' => '_stt', 'caption' => 'Features (genes, variants, etc)'},
