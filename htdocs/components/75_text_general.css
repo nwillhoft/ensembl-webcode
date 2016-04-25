@@ -86,6 +86,7 @@ div.column-right            { margin-left: 0.5em;   margin-right: 0; }
 div.box-left                { width:49.5%; float:left; margin-left: 0; margin-right: 0.5%; clear:left; }
 div.box-right               { width:49.5%; float:right; margin-left: 0.5%; margin-right: 0; }
 div.column-twothird         { float:left; width: 66.7% }
+div.box-centred             { width:50%; margin:0 auto; text-align:center; }
 
 /* IE 6 & 7 hacks for above */
 body.ie67 div.column-wrapper,
