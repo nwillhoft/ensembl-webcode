@@ -42,3 +42,26 @@ Ensembl.Panel.DataExport = Ensembl.Panel.extend({
     this.elLk.form.find('input[type=submit]').val(this.elLk.cSwitch.filter(':checked').val() || this.elLk.dropdown.find('option:selected').val() === 'RTF' ? 'Download' : 'Preview');
   }
 });
+
+Ensembl.Panel.DataExport_ImageTracks = Ensembl.Panel.extend({
+
+  init: function () {
+    var panel = this;
+
+    this.base();
+
+    /* Switch the file extension when the format dropdown changes */
+    this.elLk.form      = this.el.find('form').first();
+    var fieldset        = this.elLk.form.find('fieldset.track-list');
+    this.elLk.extSwitch = fieldset.find('select[name=format]').on('change', function() { panel.updateExtension(fieldset, this.value); });
+  }, 
+
+  updateExtension: function(fieldset, newExt) {
+    this.elLk.fileName  = fieldset.find('input[name=filename]');
+    var oldName         = this.elLk.fileName.val();
+    var regex           = /\.(\w)*$/i;
+    var newName         = oldName.replace(regex, '.' + newExt);
+    this.elLk.fileName.val(newName);
+  }
+
+});
