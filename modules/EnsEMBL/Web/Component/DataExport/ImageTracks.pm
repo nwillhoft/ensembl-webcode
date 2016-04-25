@@ -64,7 +64,7 @@ sub content {
   }
 
   ## Sequence sub-form
-  my $seq_fieldset  = $form->add_fieldset({'legend' => 'Download sequence (FASTA)', 'class' => '_stt_sequence hide'});
+  my $seq_fieldset  = $form->add_fieldset({'legend' => 'Download sequence (FASTA)', 'class' => '_stt_sequence hidden'});
   $self->add_subhead($seq_fieldset, 'Region');
 
   $seq_fieldset->add_field({
@@ -119,7 +119,7 @@ sub content {
   $seq_fieldset->add_button('type' => 'Submit', 'name' => 'submit', 'value' => 'Download', 'class' => 'download');
 
   ## Features sub-form
-  my $feats_fieldset = $form->add_fieldset({'legend' => 'Download features', 'class' => 'track-list _stt_features hide'});
+  my $feats_fieldset = $form->add_fieldset({'legend' => 'Download features', 'class' => 'track-list _stt_features hidden'});
   $self->add_subhead($feats_fieldset, 'Tracks to export');
 
   my $track_count = $self->add_active_tracks($feats_fieldset);
@@ -157,7 +157,7 @@ sub content {
   }
 
   ## Big data sub-form
-  my $bigdata_fieldset = $form->add_fieldset({'class' => '_stt_bigdata hide'});
+  my $bigdata_fieldset = $form->add_fieldset({'class' => '_stt_bigdata hidden'});
 
   my $ftp_base = sprintf '%s/release-%s', $hub->species_defs->ENSEMBL_FTP_URL, $hub->species_defs->ENSEMBL_VERSION;
   my $species = lc($hub->species_defs->SPECIES_URL);
