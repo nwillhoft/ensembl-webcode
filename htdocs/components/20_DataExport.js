@@ -52,12 +52,11 @@ Ensembl.Panel.DataExport_ImageTracks = Ensembl.Panel.extend({
 
     /* Switch the file extension when the format dropdown changes */
     this.elLk.form      = this.el.find('form').first();
-    var fieldset        = this.elLk.form.find('fieldset.track-list');
-    this.elLk.extSwitch = fieldset.find('select[name=format]').on('change', function() { panel.updateExtension(fieldset, this.value); });
+    this.elLk.extSwitch = this.elLk.form.find('select[name=format]').on('change', function() { panel.updateExtension(this.value); });
   }, 
 
-  updateExtension: function(fieldset, newExt) {
-    this.elLk.fileName  = fieldset.find('input[name=filename]');
+  updateExtension: function(newExt) {
+    this.elLk.fileName  = this.elLk.form.find('input[name=name]');
     var oldName         = this.elLk.fileName.val();
     var regex           = /\.(\w)*$/i;
     var newName         = oldName.replace(regex, '.' + newExt);

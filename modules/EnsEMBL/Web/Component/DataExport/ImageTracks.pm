@@ -200,7 +200,7 @@ $ftp_base, $species,
 
   $bigdata_fieldset->add_notes({'text' => $text});
 
-  return $form->render;
+  return '<input type="hidden" class="subpanel_type" value="DataExport_ImageTracks" />'.$form->render;
 }
 
 sub default_file_name {
