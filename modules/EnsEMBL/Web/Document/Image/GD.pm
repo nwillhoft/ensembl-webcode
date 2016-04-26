@@ -625,41 +625,36 @@ sub render_text {
   ## We don't want to create the entire image, just get the data for the glyphsets we're exporting
   ## This is basically a very cut-down version of DrawableContainer, omitting all the drawing stuff!
 
-  ## Loop through each pair of "container / config"s
-  foreach my $CC (@{$self->drawable_container->{'contents'}}) {
-    my ($container, $config) = @$CC;
-    next unless ($container && $config);
+  my ($container, $config) = @{$self->drawable_container->{'contents'}[0]};
+  return [] unless ($container && $config);
 
-    foreach my $track_config (@{$config->glyphset_configs}) {
+  foreach my $track_config (@{$config->glyphset_configs}) {
+    my $track_id = $track_config->{'id'};
+    next unless $hub->param('track_'.$track_id);
 
-      # next unless (we want to export this track)
+    my $classname = 'EnsEMBL::Draw::GlyphSet::'.$track_config->get('glyphset');
 
-      my $classname = 'EnsEMBL::Draw::GlyphSet::'.$track_config->get('glyphset');
+    next unless dynamic_use($classname, 1);
 
-      next unless dynamic_use($classname, 1);
+    my $glyphset;
+    my $strand = $track_config->get('drawing_strand') || $track_config->get('strand');
 
-      my $glyphset;
-      my $strand = $track_config->get('drawing_strand') || $track_config->get('strand');
-
-      ## create a new glyphset for this track
-      eval {
-        $glyphset = $classname->new({
+    ## create a new glyphset for this track
+    eval {
+      $glyphset = $classname->new({
           container   => $container,
           config      => $config,
           my_config   => $track_config,
           strand      => $strand eq 'f' ? 1 : -1,
           display     => 'text',
         });
-      };
-      next if ($@ || !$glyphset || !$glyphset->can('get_data'));
+    };
+    next if ($@ || !$glyphset || !$glyphset->can('get_data'));
 
-      ## TODO - only get data for tracks that have been selected in the form
+    my $track_data = $glyphset->get_data;
 
-      my $track_data = $glyphset->get_data;
-
-      if ($track_data) {
-        #$writer->output_dataset($track_data);
-      }
+    if ($track_data) {
+      #$writer->output_dataset($track_data);
     }
   }
   ## Where do we download the completed file from?

@@ -254,7 +254,7 @@ sub add_active_tracks {
 
             my $is_var = $menu eq 'variation' ? 1 : 0;
             my $params = {
-                          'name'        => $track->get('id'),
+                          'name'        => 'track_'.$track->{'id'},
                           'label'       => $track->get('caption'), 
                           'type'        => 'Checkbox',
                           'value'       => 1,
