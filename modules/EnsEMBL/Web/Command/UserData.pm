@@ -34,6 +34,7 @@ use base qw(EnsEMBL::Web::Command);
 sub ajax_redirect {
   ## Provide default value for redirectType and modalTab
   my ($self, $url, $param, $anchor, $redirect_type, $modal_tab) = @_;
+  warn ">>> AJAX TO $url, $param, $anchor, $redirect_type, $modal_tab";
   $self->SUPER::ajax_redirect($url, $param, $anchor, $redirect_type || 'modal', $modal_tab || 'modal_user_data');
 }
 
@@ -115,10 +116,11 @@ sub attach {
   my $ensembl_assemblies = $hub->species_defs->assembly_lookup;
 
   my ($url, $error, $options) = $attachable->check_data($ensembl_assemblies);
-  my ($redirect, $params);
+  my $params = {};
+  my ($anchor, $tab);
 
   if ($error) {
-    $redirect = 'SelectFile';
+    $params->{'action'} = 'SelectFile';
 
     $hub->session->add_data(
                         type     => 'message',
@@ -131,7 +133,6 @@ sub attach {
     ## This next bit is a hack - we need to implement userdata configuration properly! 
     my $extra_config_page = $attachable->extra_config_page;
     my $name              = $hub->param('name') || $options->{'name'} || $filename;
-    $redirect             = $extra_config_page || 'RemoteFeedback';
 
     delete $options->{'name'};
 
@@ -211,16 +212,29 @@ sub attach {
     }
 
     $params = {
-                format          => $attachable->name,
-                name            => $name,
-                species         => $hub->param('species') || $hub->species,
-                species_flag    => $species_flag,
-                assembly_flag   => $assembly_flag,
-                code            => $code,
+                name    => $name,
+                format  => $attachable->name,
+                species => $hub->param('species') || $hub->species,
+                action  => $extra_config_page,
+                code    => $code,
                 };
+
+    if ($species_flag || $assembly_flag) {
+      $params->{'species_flag'} = $species_flag;
+      $params->{'assembly_flag'} = $assembly_flag;
+    }
+    else {
+      my $sample_data       = $hub->species_defs->SAMPLE_DATA || {};
+      my $default_location  = $sample_data->{'LOCATION_PARAM'};
+      $params->{'type'}     = 'Location';
+      $params->{'action'}   = 'View';
+      $params->{'r'}        = $hub->param('r') || $default_location;
+      $tab                  = 'modal_config_viewbottom';
+      $anchor               = $tab.'-'.clean_id($name);
+    }
   }
 
-  return ($redirect, $params);
+  return ($params, $anchor, $tab);
 }
 
 1;

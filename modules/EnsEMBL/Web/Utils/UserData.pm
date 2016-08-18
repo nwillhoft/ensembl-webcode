@@ -32,7 +32,7 @@ sub check_attachment {
   my $species_defs = $hub->species_defs;
 
   my $already_attached = 0;
-  my ($redirect, $params, $menu);
+  my ($params, $anchor, $tab, $menu);
 
   ## Check for pre-configured hubs
   my %preconfigured = %{$species_defs->ENSEMBL_INTERNAL_TRACKHUB_SOURCES||{}};
@@ -65,13 +65,21 @@ sub check_attachment {
     }
   }
 
+  $params = {
+              'type'      => 'Location',
+              'action'    => 'View',
+            };
+
   if ($already_attached) {
-    $redirect = 'RemoteFeedback';
-    $params = {'format' => 'TRACKHUB', 'reattach' => $already_attached};
-    $params->{'menu'} = $menu if $menu;
+    $params->{'reattach'} = $already_attached;
+    if ($menu) {
+      #$params->{'menu'}   = $menu;
+      $tab                = 'modal_config_viewbottom';
+      $anchor             = $tab.'-'.$menu;
+    }
   }
 
-  return ($redirect, $params);
+  return ($params, $anchor, $tab);
 }
 
 1;

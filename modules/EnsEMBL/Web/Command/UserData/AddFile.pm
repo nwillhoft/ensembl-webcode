@@ -37,9 +37,9 @@ sub process {
   
   return $self->set_format if $hub->function eq 'set_format';
 
-  my $url_params = $self->upload_or_attach;
+  my ($url_params, $anchor, $tab) = $self->upload_or_attach;
   
-  return $self->ajax_redirect($self->hub->url($url_params));
+  return $self->ajax_redirect($self->hub->url($url_params), {}, $anchor, 'modal', $tab);
 }
  
 sub upload_or_attach {
@@ -50,10 +50,9 @@ sub upload_or_attach {
   my $format_name   = $hub->param('format');
   my $species_defs  = $hub->species_defs;
   my $url_params    = {};
-  my $new_action    = '';
   my $attach        = 0;
   my $index_err     = 0; # is on if index is required, but is missiing
-  my $url;
+  my ($url, $anchor, $tab);
 
   if ($method eq 'text' && $hub->param('text') =~ /^\s*(http|ftp)/) {
     ## Attach the file from the remote URL
@@ -80,12 +79,9 @@ sub upload_or_attach {
 
   if ($attach) {
     ## Is this file already attached?
-    ($new_action, $url_params) = check_attachment($hub, $url);
+    ($url_params, $anchor, $tab) = check_attachment($hub, $url);
 
-    if ($new_action) {
-      $url_params->{'action'} = $new_action;
-    }
-    else {
+    unless ($url_params->{'reattach'}) {
       my %args = ('hub' => $hub, 'format' => $format_name, 'url' => $url, 'track_line' => $hub->param('trackline') || '', 'registry' => $hub->param('registry') || 0);
       my $attachable;
 
@@ -103,8 +99,8 @@ sub upload_or_attach {
           $attachable = EnsEMBL::Web::File::AttachedFormat->new(%args);
         }
         my $filename  = [split '/', $url]->[-1];
-        ($new_action, $url_params) = $self->attach($attachable, $filename, $renderer);
-        $url_params->{'action'} = $new_action;
+        ($url_params, $anchor, $tab) = $self->attach($attachable, $filename, $renderer);
+        $url_params->{'action'} = 'RemoteFeedback' unless $url_params->{'action'};
       }
     }
     $url_params->{'record_type'} = 'url';
@@ -121,7 +117,7 @@ sub upload_or_attach {
     $url_params->{'action'} = 'SelectFile';
   }
 
-  return $url_params;
+  return ($url_params, $anchor, $tab);
 }
 
 sub check_for_index {

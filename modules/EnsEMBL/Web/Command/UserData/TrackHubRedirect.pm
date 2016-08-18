@@ -57,18 +57,9 @@ sub process {
   if ($species) {
     if ($url) {
       my $new_action  = '';
-      ($new_action, $params)  = check_attachment($hub, $url);
+      $params = check_attachment($hub, $url);
 
-      if ($new_action) {
-        ## Hub is already attached, so just go there
-        $redirect = sprintf('/%s/Location/View', $species);
-        $anchor   = 'modal_config_viewbottom';
-        if ($params->{'menu'}) {
-          $anchor .= '-'.$params->{'menu'};
-          delete $params->{'menu'};
-        }
-      }
-      else {
+      unless ($params->{'reattach'}) {
         ## Check if we have any supported assemblies
         my $trackhub = EnsEMBL::Web::File::AttachedFormat::TRACKHUB->new('hub' => $self->hub, 'url' => $url);
         my $assembly_lookup = $hub->species_defs->assembly_lookup;

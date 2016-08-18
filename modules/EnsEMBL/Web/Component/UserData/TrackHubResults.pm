@@ -147,7 +147,7 @@ sub content {
         (my $species = $_->{'species'}{'scientific_name'}) =~ s/ /_/;
 
         ## Is this hub already attached?
-        my ($ignore, $params) = check_attachment($hub, $_->{'hub'}{'url'});
+        my $params = check_attachment($hub, $_->{'hub'}{'url'});
         my $button;
         if ($params->{'reattach'}) {
           my $label;
@@ -157,8 +157,7 @@ sub content {
           else {
             $label = 'Hub already attached';
           }
-          my $species       = $hub->species;
-          my $location      = $hub->param('r');
+          my $location      = $params->{'r'} || $hub->param('r');
           unless ($location) {
             my $sample_data = $hub->species_defs->get_config($species, 'SAMPLE_DATA');
             $location       = $sample_data->{'LOCATION_PARAM'};
