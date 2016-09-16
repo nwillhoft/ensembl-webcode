@@ -18,8 +18,14 @@
 /* LAYOUT FOR PAGE ELEMENTS */
 
 /*----------------------------------------------------------------------
-  
+  General settings
 ----------------------------------------------------------------------*/
+
+.hidden  { display: none; }
+.hide    { display: none; } /* need to remove this if we can */
+.page    { text-align: center; padding: 0.25em; }
+.spinner { height: 100px; display: block; border: 16px solid transparent; margin: 0 0 16px; text-align: center; background: url(/i/e-loader.gif) no-repeat bottom center; }
+.pointer { cursor: pointer; }
 
 /*----------------------------------------------------------------------
   Minimum page width - control page layout in desktop browsers

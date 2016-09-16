@@ -48,7 +48,10 @@ sub content {
   my $self = shift;
 
   ## Google Font
-  my $fonts = qq(<link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">);
+  my $fonts = qq(
+    <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Alegreya+Sans" rel="stylesheet">
+  );
 
   ## Stylesheets
   my @all;

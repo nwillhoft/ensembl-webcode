@@ -21,18 +21,20 @@
   
 ----------------------------------------------------------------------*/
 
-body { font: 90%/1.25 'Lato', Helvetica, Arial, sans-serif; 
+body { font: 90%/1.25 Lato, Verdana, Arial, sans-serif; 
        color: [[PAGE_TEXT]]; background-color: [[PAGE_BG]];
        padding: 0; margin: 0; border: 0;
 }
 
 pre, code, kbd { font-family: Courier New, Courier, monospace; }
 
-div, span, p, li, dd, dt, th, td, pre, code, kbd { font-size: 1em; }
+p.wide-ruled { line-height: 1.5; }
 
-h1      { font-size: 1.5em;       }
-h2      { font-size: 1.12em;     }
-h3      { font-size: 1.1em;    }
+h1, h2, h3  { font-family: 'Alegreya Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+
+h1      { font-size: 2em;       }
+h2      { font-size: 1.5em;     }
+h3      { font-size: 1.17em;    }
 h4      { font-size: 1em;       }
 h5      { font-size: 0.83em;    }
 h6      { font-size: 0.75em;    }
