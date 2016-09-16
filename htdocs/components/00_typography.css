@@ -1,0 +1,102 @@
+/*
+ * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+ * Copyright [2016] EMBL-European Bioinformatics Institute
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* BASE CLASSES TO TWEAK DEFAULT BROWSER RENDERING AND STYLE OVERALL SITE */
+
+/*----------------------------------------------------------------------
+  
+----------------------------------------------------------------------*/
+
+body { font: 90%/1.25 'Lato', Helvetica, Arial, sans-serif; 
+       color: [[PAGE_TEXT]]; background-color: [[PAGE_BG]];
+       padding: 0; margin: 0; border: 0;
+}
+
+pre, code, kbd { font-family: Courier New, Courier, monospace; }
+
+div, span, p, li, dd, dt, th, td, pre, code, kbd { font-size: 1em; }
+
+h1      { font-size: 1.5em;       }
+h2      { font-size: 1.12em;     }
+h3      { font-size: 1.1em;    }
+h4      { font-size: 1em;       }
+h5      { font-size: 0.83em;    }
+h6      { font-size: 0.75em;    }
+
+h1.light,
+h2.light,
+h3.light,
+h4.light        { color: [[HEADER_LIGHT]]; }
+
+.invisible      { font-size: 1px; color: #fff; height: 0; clear: both; overflow: hidden; margin: 0!important; line-height: 0!important; }
+.mobile-only    { display:none; }
+
+/*----------------------------------------------------------------------
+ Links 
+----------------------------------------------------------------------*/
+a                     { color: [[PAGE_LINK]];    } /* neutral style for anchor target */
+a:visited             { color: [[PAGE_VISITED]]; }
+a:hover, a:focus      { color: [[PAGE_HOVER]];   }
+a:active              { color: [[PAGE_HOVER]];   }
+a.no-visit:visited    { color: [[PAGE_LINK]]; } /* don't change link colour on links we want to stay "visible" */
+a.external-link,
+a[rel=external]       { background-position: right center; background-repeat: no-repeat; padding-right: 12px; background-image: url("[[IMG:external_link.svg]]") }
+a.external-link:hover,
+a[rel=external]:hover { background-image: url("[[IMG:external_link_hover.svg]]") }
+span.link             { color: [[PAGE_LINK]]; cursor: pointer; text-decoration: underline; }
+a.toggle              { background: url(/i/open2.gif) no-repeat right bottom; text-decoration: none; padding-right: 20px; outline: 0 none; }
+a.toggle.closed       { background-image: url(/i/closed2.gif); }
+a.ajax_add            { background: none!important; padding-right: 0; }
+p.button a            { background-color: [[BUTTON_BG]]; border: 3px double [[PAGE_BG]]; color: [[PAGE_BG]]; padding: 3px 6px 1px; margin-right: 4px; text-decoration: none; display: inline-block; }
+p.warn a              { background-color: [[WARNING_BG]]; }
+a.pre_species         { color: #333333; }
+a.pre_species:visited { color: #333333; }
+a.pre_species:hover   { color: [[PAGE_HOVER]]; }
+
+/* external links have an extra ..... ed line under them... */
+a._external_link_ { border-bottom: 1px dotted [[PAGE_LINK]]; }
+
+a.mobile-link   { font-size: 15px; } /* footer mobile site link */
+
+/***********************************************************************
+**
+** Basic printer styles
+**
+***********************************************************************/
+
+.screen_hide_inline, .screen_hide_block { display: none; }
+
+@media print {
+
+  * { background: transparent !important;
+        color: #000 !important; /* Black prints faster: h5bp.com/s */
+        box-shadow: none !important;
+        text-shadow: none !important; }
+
+  p,
+  h2,
+  h3 {orphans: 3; /* http://css-tricks.com/almanac/properties/o/orphans/ */
+      widows: 3;  /* http://css-tricks.com/almanac/properties/w/widows/ */}
+
+  h2, h3 {page-break-after: avoid; } 
+
+  .print_hide, .error, .warning, .info { display: none !important; }
+  .screen_hide_inline                  { display: inline; }
+  .screen_hide_block                   { display: block ; }
+}
+
+

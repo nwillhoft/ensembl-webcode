@@ -47,6 +47,10 @@ sub init {
 sub content {
   my $self = shift;
 
+  ## Google Font
+  my $fonts = qq(<link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">);
+
+  ## Stylesheets
   my @all;
   foreach my $s (@{$self->{'_sheets'}||[]}) {
     my $base = '';
@@ -55,11 +59,12 @@ sub content {
     my $ieu = $url;
     $ieu =~ s/\.css$/.ie7.css/;
     my $link = qq(<link rel="stylesheet" type="text/css" media="all");
+    ## Browser-specific tweaks
     push @all,qq(<!--[if lte IE 7]>$link href="$ieu"/><![endif]-->);
     push @all,qq(<!--[if gt IE 7]>$link href="$url"/><![endif]-->);
     push @all,qq(<!--[if !IE]><!-->$link href="$url"/><!--<![endif]-->);
   }
-  return join('',@all);
+  return $fonts.join('',@all);
 
 }
 
