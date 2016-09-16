@@ -71,9 +71,7 @@ Ensembl.extend({
         this.cookie.set('ENSEMBL_WIDTH', width);
       }
     }
-    
-    this.cookie.set('WINDOW_WIDTH', $(window).width());
-    
+
     if (hints) {
       $.each(hints.split(/:/), function () {
         Ensembl.hideHints[this] = 1;
@@ -121,8 +119,8 @@ Ensembl.extend({
       var cookie = [
         unescaped === true ? (name + '=' + (value || '')) : (escape(name) + '=' + escape(value || '')),
         '; expires=',
-        ((expiry === -1 || value === '') ? 'Thu, 01 Jan 1970' : expiry ? expiry : 'Tue, 19 Jan 2038'),
-        ' 00:00:00 GMT; path=/'
+        ((expiry === -1 || value === '') ? 'Thu, 01 Jan 1970 00:00:00 GMT' : expiry ? expiry : 'Tue, 19 Jan 2038 00:00:00 GMT'),
+        '; path=/'
       ].join('');
       document.cookie = cookie;
       

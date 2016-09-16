@@ -29,25 +29,58 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 
-use EnsEMBL::Web::IOWrapper::Indexed;
-
 use parent qw(EnsEMBL::Draw::GlyphSet::bigbed);
 
 sub render_as_collapsed_nolabel {
   my $self = shift;
   $self->{'my_config'}->set('drawing_style', ['Feature::Transcript']);
-  $self->{'my_config'}->set('collapse', 1);
+  $self->{'my_config'}->set('collapsed', 1);
   $self->{'my_config'}->set('show_labels', 0);
   $self->draw_features;
 }
  
 sub render_as_collapsed_label {
   my $self = shift;
-  warn ">>> RENDERING COLLAPSED";
   $self->{'my_config'}->set('drawing_style', ['Feature::Transcript']);
-  $self->{'my_config'}->set('collapse', 1);
+  $self->{'my_config'}->set('collapsed', 1);
   $self->{'my_config'}->set('show_labels', 1);
   $self->draw_features;
+}
+
+sub post_process {
+  my ($self, $features) = @_;
+  return unless scalar @$features;
+  my $merged_features = {};
+
+  ## Merge transcripts into genes if required
+  if ($self->{'my_config'}->get('collapsed')) {
+ 
+    foreach my $f (@$features) {
+      #warn ">>> FEATURE ".$f->{'label'}." BELONGS TO GENE ".$f->{'gene'};
+
+      ## Have we seen this gene already?
+      my $merge = $merged_features->{$f->{'gene'}};
+
+      ## Another transcript of an existing gene?
+      if ($merge) {
+        if ($f->{'strand'} == 1) {
+          $merge->{'start'} = $f->{'start'} if $f->{'start'} < $merge->{'start'};
+          $merge->{'end'}   = $f->{'end'} if $f->{'end'} > $merge->{'end'};
+        }
+        else {
+          $merge->{'start'} = $f->{'start'} if $f->{'start'} > $merge->{'start'};
+          $merge->{'end'}   = $f->{'end'} if $f->{'end'} < $merge->{'end'};
+        }
+      }
+      else { ## New gene
+        $f->{'label'} = $f->{'gene'};
+        $merged_features->{$f->{'gene'}} = $f;
+      }
+    }
+  }
+  
+  my @merged = sort {$a->{'start'} <=> $b->{'start'}} values $merged_features;
+  return \@merged;
 }
 
 1;

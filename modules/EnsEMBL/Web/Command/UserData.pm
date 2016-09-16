@@ -61,12 +61,12 @@ sub upload {
 
   if ($error) {
     $params->{'restart'} = 1;
-    $hub->session->add_data(
+    $hub->session->set_record_data({
       type     => 'message',
       code     => 'userdata_error',
       message  => "There was a problem uploading your data: $error.<br />Please try again.",
       function => '_error'
-    );
+    });
   } else {
     ## Get description from file and save to session
     my $description = $iow->get_metadata_value('description');
@@ -79,9 +79,9 @@ sub upload {
         }
       }
       else {
-        my $data = $hub->session->get_data('type' => 'upload', 'code' => $file->code);
-        $data->{'description'} = $description;
-        $hub->session->set_data(%$data);
+        my $data = $hub->session->get_record_data({'type' => 'upload', 'code' => $file->code});
+        $data->{'description'} = $description if keys %$data;
+        $hub->session->set_record_data($data);
       }
     }
 
@@ -95,12 +95,14 @@ sub upload {
     $params->{'species'}  = $hub->param('species') || $hub->species;
     $params->{'format'}   = $iow->format;
     $params->{'code'}     = $file->code;
+
     # Store last uploaded userdata to highlight on pageload
-    $hub->session->add_data(
+    $hub->session->set_record_data({
       type => 'userdata_upload_code',
+      code => $file->code,
       upload_code => $file->code
-    );
-  } 
+    });
+  }
  
   return $params;
 }
@@ -122,12 +124,12 @@ sub attach {
   if ($error) {
     $params->{'action'} = 'SelectFile';
 
-    $hub->session->add_data(
+    $hub->session->set_record_data({
                         type     => 'message',
                         code     => 'AttachURL',
                         message  => $error,
                         function => '_error'
-                      );
+                      });
   } 
   else {
     ## This next bit is a hack - we need to implement userdata configuration properly! 
@@ -170,9 +172,9 @@ sub attach {
         }
 
         my $t_code = join('_', md5_hex($name . $current_species . $assembly . $url), 
-                                  $hub->session->create_session_id); 
+                                  $hub->session->session_id); 
         unless ($is_old) {
-          my $data = $hub->session->add_data(
+          my $data = $hub->session->set_record_data({
                                         type        => 'url',
                                         code        => $t_code,
                                         url         => $url,
@@ -183,16 +185,17 @@ sub attach {
                                         assembly    => $assembly,
                                         timestamp   => time,
                                         %$options,
-                                        );
+                                        });
 
-          $hub->session->configure_user_data('url', $data);
+          $hub->configure_user_data('url', $data);
 
           $code = $data->{'code'};
           # Store last uploaded userdata to highlight on pageload
-          $hub->session->add_data(
+          $hub->session->set_record_data({
             type => 'userdata_upload_code',
+            code => $code,
             upload_code => $code
-          );    
+          });
           $self->object->move_to_user(type => 'url', code => $data->{'code'}) if $hub->param('save');
         }
       }
