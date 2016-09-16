@@ -127,7 +127,7 @@ div.twocol div.twocol-cell { margin: 0 0 4px; }
 
 .plain-box, .tinted-box,
 .info-box,  .round-box,
-.alert-box, .embedded-box { color:[[PANEL_TEXT]]; padding: 16px 16px 0; margin-bottom:16px; 
+.alert-box, .embedded-box { color:[[PANEL_TEXT]]; padding: 8px 8px 0; margin-bottom:16px; 
                             overflow: hidden; }
 .plain-box                { background-color:[[PANEL_BG]]; }
 .shadow-box               { box-shadow: 2px 2px 4px [[PANEL_BORDER]]; }

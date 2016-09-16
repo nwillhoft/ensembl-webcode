@@ -45,18 +45,20 @@ body.static #widemain { margin-left: 0; }
 #masthead ul.tools                        { margin: 19px 0 0 -5px; height: 16px; overflow: hidden; }
 #masthead ul.tools li                     { padding: 0 10px; border-right: 1px solid [[MH_TEXT]]; margin: 0; }
 #masthead ul.tools li.last                { border: 0; }
-#masthead ul.tabs                         { margin: 0; padding: 0; width: 100%; }
-#masthead ul.tabs li                      { background: [[MH_TAB]]; margin: 0 5px 0 2px; padding: 0; border-radius: 10px 10px 0 0; -moz-border-radius: 10px 10px 0 0; -webkit-border-radius: 10px 10px 0 0; }
-#masthead ul.tabs li.active               { background: [[MH_TAB_ACTIVE]] }
+
+/* TABS - NOW MORE LIKE BREADCRUMBS */
+#masthead ul.tabs                         { margin: 20 0 0 0; padding: 0; width: 100%; }
+#masthead ul.tabs li                      { margin: 0 5px 0 2px; padding: 0; }
 #masthead ul.tabs li.long_tab             { display: none; }
+#masthead ul.tabs a                       { font-size: 1.35em; }
 #masthead ul.tabs a,
-#masthead ul.tabs span.dropdown           { display: block; text-decoration: none; padding: 3px 8px 2px; outline: 0; }
+#masthead ul.tabs span.dropdown           { color: [[PAGE_TEXT]]; display: block; text-decoration: none; padding: 8px 2px; outline: 0; }
 #masthead ul.tabs span.dropdown           { padding-left:  0; }
 #masthead ul.tabs span.dropdown.empty     { padding-right: 0; }
 #masthead ul.tabs li.active a,
-#masthead ul.tabs li.active span.dropdown { color: [[PAGE_TEXT]]; font-weight: bold; }
+#masthead ul.tabs li.active span.dropdown { font-weight: bold; }
 #masthead ul.tabs span.dropdown a         { display: inline; }
-#masthead ul.tabs span.dropdown a.toggle  { cursor: pointer; padding: 0; font-size: 11px; line-height: 11px; background-image: none; }
+#masthead ul.tabs span.dropdown a.toggle  { cursor: pointer; padding: 0; font-size: 11px; line-height: 11px; }
 #masthead ul.tabs span.disabled           { padding: 3px 8px 2px; outline: 0; }
 #masthead ul.tabs span.disabled.toggle    { cursor: pointer; }
 #masthead div.dropdown                    { position: absolute; top: 21px; display: none; background-color: [[TINT_BG]]; border: 1px solid [[TINT_BORDER]]; padding-bottom: 5px; }
@@ -72,7 +74,7 @@ body.static #widemain { margin-left: 0; }
 #masthead .tools_holder                   { position: relative; top: 10px; left: 20px; }
 #masthead .tools_holder .arrow            { font-size: 8px; position: relative; top: -1px; padding-left: 1px; }
 #masthead .search_holder                  { position: absolute; top: 24px; right: 6px; margin-left: 6px; }
-#masthead .tabs_holder                    { position: absolute; bottom: 0; clear: both; }
+#masthead .tabs_holder                    { position: absolute; top: 80px; width:100%; padding-bottom:0px; clear: both; background-color:[[TINT_BG]]; }
 #masthead div.more                        { display: none; float: left; margin: -16px 7px 0; position: relative; z-index: 250; }
 #masthead div.more a                      { outline: 0; padding: 2px 4px; }
 #masthead div.more a.open                 { border: 1px solid [[MH_BORDER]]; color: [[CONTRAST_TEXT]]; background-color: [[PANEL_BG]]; height: 16px; position: relative; }
@@ -84,11 +86,8 @@ body.mac #masthead ul.tabs li             { height: 21px; }
 body.mac #masthead div.more a             { padding: 4px; }
 body.mac #masthead .tools_holder          { top: 13px; }
 
-body.ie #masthead ul.tabs li                      { background: url(/i/tab_on_r.gif) no-repeat right top; margin: 0 2px; background-color: [[MH_TAB]]; }
-body.ie #masthead ul.tabs li.active               { background-color: [[MH_TAB_ACTIVE]]; }
+body.ie #masthead ul.tabs li                      { margin: 0 2px; }
 body.ie #masthead ul.tabs a,
-body.ie #masthead ul.tabs span.dropdown           { background: url(/i/tab_on_l.gif) no-repeat left top; }
-body.ie #masthead ul.tabs li.active a.toggle      { background: none; }
 body.ie67 #masthead                               { z-index: 9999; }
 body.ie67 #masthead .tabs_holder                  { z-index: -1; }
 body.ie67 #masthead div.more a.open               { margin-top: -2px; }

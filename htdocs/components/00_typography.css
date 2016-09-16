@@ -30,7 +30,7 @@ pre, code, kbd { font-family: Courier New, Courier, monospace; }
 
 p.wide-ruled { line-height: 1.5; }
 
-h1, h2, h3  { font-family: 'Alegreya Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+h1, h2, h3, .header  { font-family: 'Alegreya Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
 
 h1      { font-size: 2em;       }
 h2      { font-size: 1.5em;     }
@@ -39,6 +39,9 @@ h4      { font-size: 1em;       }
 h5      { font-size: 0.83em;    }
 h6      { font-size: 0.75em;    }
 
+h2.box-header { margin:0; line-height:0.8; } 
+h3.box-header { margin:0; line-height:0.8; } 
+
 h1.light,
 h2.light,
 h3.light,
@@ -46,6 +49,19 @@ h4.light        { color: [[HEADER_LIGHT]]; }
 
 .invisible      { font-size: 1px; color: #fff; height: 0; clear: both; overflow: hidden; margin: 0!important; line-height: 0!important; }
 .mobile-only    { display:none; }
+
+/*----------------------------------------------------------------------
+  Manual margin settings - to override any existing margins
+----------------------------------------------------------------------*/
+.top-margin       { margin-top:     1em   !important; }
+.bottom-margin    { margin-bottom:  1em   !important; }
+.left-margin      { margin-left:    1em   !important; }
+.right-margin     { margin-right:   1em   !important; }
+.no-top-margin    { margin-top:     0     !important; }
+.no-bottom-margin { margin-bottom:  0     !important; }
+.no-left-margin   { margin-left:    0     !important; }
+.no-right-margin  { margin-right:   0     !important; }
+.half-margin      { margin-bottom:  0.5em !important; }
 
 /*----------------------------------------------------------------------
  Links 

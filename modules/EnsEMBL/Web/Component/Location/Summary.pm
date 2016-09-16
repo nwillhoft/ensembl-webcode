@@ -38,6 +38,7 @@ sub _init {
 
 sub content {
   my $self = shift;
+  return '';
   
   return if $self->hub->action eq 'Genome';
   

@@ -128,12 +128,14 @@ sub content {
 
   $self->init_history($hub) if $hub->user;
 
+  my $sp_icon = sprintf '<img src="/i/species/48/%s.png" class="species-icon" />', $hub->species_defs->SPECIES_URL;
+
   foreach my $entry (@{$self->entries}) {
     $entry->{'url'} ||= '#';
     
     my $name         = encode_entities($self->strip_HTML($entry->{'caption'}));
     my ($short_name) = split /\b/, $name;
-    my $constant     = $entry->{'constant'} ? ' class="constant"' : '';
+    my $constant     = $entry->{'constant'} ? ' class="constant header"' : ' class="header"';
     my $short_link   = qq(<a href="$entry->{'url'}" title="$name"$constant>$short_name</a>);
     my $long_link    = qq(<a href="$entry->{'url'}"$constant>$name</a>);
     
@@ -155,7 +157,7 @@ sub content {
   }
   
   $content  = $short_tabs . $long_tabs;
-  $content  = qq{<ul class="tabs">$content</ul>} if $content;
+  $content  = qq{<ul class="tabs">$sp_icon$content</ul>} if $content;
   $content .= $self->species_list                if $self->{'species_list'};
   $content .= join '', values %{$self->dropdown} if $history;
   

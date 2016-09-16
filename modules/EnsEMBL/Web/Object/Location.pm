@@ -135,12 +135,13 @@ sub short_caption {
   my $self = shift;
 
   return shift eq 'global' ?
-    'Location: ' . $self->Obj->{'seq_region_name'} . ':' . $self->thousandify($self->Obj->{'seq_region_start'}) . '-' . $self->thousandify($self->Obj->{'seq_region_end'}) :
-    'Location-based displays';
+    $self->Obj->{'seq_region_name'} . ':' . $self->thousandify($self->Obj->{'seq_region_start'}) . '-' . $self->thousandify($self->Obj->{'seq_region_end'}) :
+    '';
 }
 
 sub caption {
   my $self = shift;
+  return '';
   return $self->hub->action eq 'Genome' ? '' : $self->neat_sr_name($self->seq_region_type, $self->seq_region_name) . ': ' . $self->thousandify($self->seq_region_start) . '-' . $self->thousandify($self->seq_region_end);
 }
 

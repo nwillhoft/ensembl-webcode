@@ -52,6 +52,7 @@ sub active {
 sub caption {
   my $self = shift;
   $self->{'caption'} = shift if @_;
+  return '';
   return $self->{'caption'};
 }
 
