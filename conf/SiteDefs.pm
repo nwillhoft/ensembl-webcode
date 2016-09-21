@@ -464,7 +464,8 @@ sub set_species_aliases {
 
   ## Add self refernetial elements to ENSEMBL_SPECIES_ALIASES
   ## And one without the _ in...
-  
+ 
+=pod 
   our $ENSEMBL_SPECIES_ALIASES = {};
   
   $ENSEMBL_DATASETS = [ sort keys %__species_aliases ] unless scalar @$ENSEMBL_DATASETS; 
@@ -502,6 +503,7 @@ sub set_species_aliases {
   }
 
   $ENSEMBL_SECONDARY_SPECIES = shift @temp_species if $ENSEMBL_SECONDARY_SPECIES eq $ENSEMBL_PRIMARY_SPECIES;
+=cut
 }
 
 sub verbose_params {
