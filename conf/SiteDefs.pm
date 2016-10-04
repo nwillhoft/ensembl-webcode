@@ -281,21 +281,6 @@ our $PACED_MULTI = 6; # Max simultaneous connections
 ###############################################################################
 
 ###############################################################################
-## Choice of species...
-###############################################################################
-
-our $ENSEMBL_DATASETS         = [];
-our $ENSEMBL_PRIMARY_SPECIES  = 'Homo_sapiens'; # Default species
-our $ENSEMBL_SECONDARY_SPECIES;
-
-## This hash is used to configure the species available in this
-## copy of EnsEMBL - comment out any lines which are not relevant
-## If you add a new species MAKE sure that one of the values of the
-## array is the "SPECIES_CODE" defined in the species.ini file
-
-our %__species_aliases;
-
-###############################################################################
 ## Cookies and cookie encryption
 ###############################################################################
 
@@ -403,8 +388,6 @@ our $ENSEMBL_STATIC_BASE_URL   = $ENSEMBL_STATIC_SERVER || $ENSEMBL_BASE_URL;
 our $MART_HELP_DESK            = "${ENSEMBL_SITE_URL}default/helpview";
 our $ENSEMBL_TEMPLATE_ROOT     = "$ENSEMBL_SERVERROOT/biomart-perl/conf";
 
-set_species_aliases();
-
 sub update_conf {
   our $ENSEMBL_PLUGIN_ROOTS = [];
   
@@ -459,53 +442,6 @@ sub update_conf {
     "$ENSEMBL_SERVERROOT/ensembl/modules",
     "${APACHE_DIR}lib/perl5/site_perl/$Config{'version'}/$Config{'archname'}/",
   );
-}
-
-sub set_species_aliases {
-  #-# Autogeneration stuff.... DO NOT TOUCH THIS - it does nasty stuff....
-
-  ## Add self refernetial elements to ENSEMBL_SPECIES_ALIASES
-  ## And one without the _ in...
- 
-=pod 
-  our $ENSEMBL_SPECIES_ALIASES = {};
-  
-  $ENSEMBL_DATASETS = [ sort keys %__species_aliases ] unless scalar @$ENSEMBL_DATASETS; 
- 
-  foreach my $name (@$ENSEMBL_DATASETS) {
-    $ENSEMBL_SPECIES_ALIASES->{lc $_} = $name for @{$__species_aliases{$name}};
-    
-    my $key = lc $name;
-    $ENSEMBL_SPECIES_ALIASES->{$key} = $name;   # homo_sapiens
-    
-    $key =~ s/\.//g;
-    $ENSEMBL_SPECIES_ALIASES->{$key} = $name;   # homosapiens
-    
-    $key = lc $name;
-    $key =~ s/^([a-z])[a-z]*_/$1_/g;
-    $ENSEMBL_SPECIES_ALIASES->{$key} = $name;   # h_sapiens
-    
-    $key =~ s/_/\./g;
-    $ENSEMBL_SPECIES_ALIASES->{$key} = $name;   # h.sapiens
-    
-    $key =~ s/_//g;
-    $ENSEMBL_SPECIES_ALIASES->{$key} = $name;   # hsapiens
-  }
-
-  my @temp_species = @$ENSEMBL_DATASETS;
-
-  unless ($__species_aliases{$ENSEMBL_PRIMARY_SPECIES}) {
-    error(qq{Species "$ENSEMBL_PRIMARY_SPECIES" not defined in ENSEMBL_SPECIES_ALIASES});
-    $ENSEMBL_PRIMARY_SPECIES = shift @temp_species;
-  }
-
-  unless ($__species_aliases{$ENSEMBL_SECONDARY_SPECIES}) {
-    error(qq{Species "$ENSEMBL_SECONDARY_SPECIES" not defined in ENSEMBL_SPECIES_ALIASES});
-    $ENSEMBL_SECONDARY_SPECIES = shift @temp_species;
-  }
-
-  $ENSEMBL_SECONDARY_SPECIES = shift @temp_species if $ENSEMBL_SECONDARY_SPECIES eq $ENSEMBL_PRIMARY_SPECIES;
-=cut
 }
 
 sub verbose_params {
