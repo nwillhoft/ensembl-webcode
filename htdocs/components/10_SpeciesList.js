@@ -29,10 +29,11 @@ Ensembl.Panel.SpeciesList = Ensembl.Panel.extend({
     this.allSpecies       = this.params['species_list'];
     this.favTemplate      = this.params['fav_template'];
     this.listTemplate     = this.params['list_template'];
-    this.urlTemplate      = this.params['species_url_template'];
     this.refreshURL       = this.params['ajax_refresh_url'];
     this.saveURL          = this.params['ajax_save_url'];
     this.displayLimit     = this.params['display_limit'];
+    this.taxonOrder       = this.params['taxon_order'];
+    this.taxonLabels      = this.params['taxon_labels'];
 
     this.elLk.buttonEdit.on('click', { panel: this }, function(e) {
       e.preventDefault();
@@ -125,19 +126,55 @@ Ensembl.Panel.SpeciesList = Ensembl.Panel.extend({
   },
 
   renderDropdown: function() {
-    var template = this.urlTemplate;
-    var dropdown = this.elLk.dropdown.children(':not(:first-child)').remove().end();
+    var panel         = this;
+    var labels        = this.taxonLabels;
+    var dropdown      = this.elLk.dropdown.children(':not(:first-child)').remove().end();
+    var optgroups     = $();
+    var favSpecies    = $.map(this.allSpecies, function(sp) { return sp.favourite ? sp: null } );
+    var sortedSpecies = this.allSpecies.slice(0).sort(function (a, b) { return a.common > b.common ? 1 : -1 });
 
-    $.each(this.allSpecies, function(i, species) {
+    // favourites group
+    $.each(favSpecies, function(i, species) {
+      var optgroup = optgroups.filter('.favourites');
+      if (!optgroup.length) {
+        optgroup = $('<optgroup class="favourites" label="Favourites"></optgroup>');
+        optgroups = optgroups.add(optgroup);
+      }
+      panel.addOption(optgroup, species, true);
+    });
+
+    // taxon group
+    $.each(sortedSpecies, function(i, species) {
+
       if (!species.external) {
-        var groupClass  = species.group.replace(/\W/g, '_');
-        var optgroup    = dropdown.find('optgroup.' + groupClass);
+        var groupClass  = species.group;
+        var optgroup    = optgroups.filter('.' + groupClass);
         if (!optgroup.length) {
-          optgroup = $('<optgroup class="' + groupClass + '" label="' + species.group + '"></optgroup>').appendTo(dropdown);
+          optgroup = $('<optgroup class="' + groupClass + '" label="' + (labels[species.group] || groupClass) + '"></optgroup>');
+          optgroups = optgroups.add(optgroup);
         }
-        optgroup.append('<option value="' + Ensembl.populateTemplate(template, {species: species}) + '">' + species.common + ' (' + species.name + ')</option>');
+        panel.addOption(optgroup, species);
       }
     });
+
+    // add favourites on top
+    optgroups.filter('.favourites').appendTo(dropdown);
+
+    // add remaining optgroups acc to taxon order
+    for (var i in this.taxonOrder) {
+      optgroups.filter('.' + this.taxonOrder[i]).appendTo(dropdown);
+    }
+  },
+
+  addOption: function(optgroup, species, favSection) {
+    optgroup.append(
+      '<option value="' + species.homepage + '">' +
+      species.common + ( favSection && species.favourite && species.has_alt ? (' ' + (species.assembly_v || species.assembly) ) : '' ) +
+      '</option>'
+    );
+    if (!favSection && species.strainspage) {
+      optgroup.append('<option value="' + species.strainspage + '">' + species.common + ' strains</option>');
+    }
   },
 
   updateFav: function(favSpecies) {

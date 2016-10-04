@@ -56,6 +56,8 @@ sub reset {
   );
 }
 
+sub subslicer { return $_[0]; }
+
 sub make_c2s {
   return EnsEMBL::Web::TextSequence::ClassToStyle::CSS->new($_[0]->view);
 }
@@ -90,36 +92,44 @@ sub format_line {
   });
 }
 
+sub goahead_line { return 1; }
+
 sub format_lines {
   my ($self,$layout,$config,$line_numbers,$multi) = @_;
 
-  my $output = $self->{'data'};
+  my $view = $self->view;
+  my $ropes = [grep { !$_->hidden } @{$view->sequences}];
+
   my $html = "";
  
-  if($self->view->interleaved) {
+  if($view->interleaved) {
     # Interleaved sequences
     # We truncate to the length of the first sequence. This is a bug,
     # but it's one relied on for TranscriptComparison to work.
     my $num_lines = 0;
-    $num_lines = @{$output->[0]}-1 if $output and @$output and $output->[0];
+    $num_lines = @{$ropes->[0]->output->lines}-1 if $ropes and @$ropes and $ropes->[0];
     #
     for my $x (0..$num_lines) {
       my $y = 0;
 
-      foreach (@$output) {
+      foreach my $rope (@$ropes) {
+        my $ro = $rope->output->lines;
         my $num = shift @{$line_numbers->{$y}};
-        $self->format_line($layout,$_->[$x],$num,$config,$multi && $y == $#$output);
+        next unless $self->goahead_line($ro->[$x]);
+        $self->format_line($layout,$ro->[$x],$num,$config,$multi && $y == $#$ropes);
         $y++;
       }
     }
   } else {
     # Non-interleaved sequences (eg Exon view)
     my $y = 0;
-    foreach my $seq (@$output) {
+    foreach my $rope (@$ropes) {
+      my $ro = $rope->output;
       my $i = 0;
-      foreach my $x (@$seq) {
+      my $lines = $ro->lines;
+      foreach my $x (@$lines) {
         my $num = shift @{$line_numbers->{$y}};
-        $self->format_line($layout,$x,$num,$config,$multi && $i == $#$seq);
+        $self->format_line($layout,$x,$num,$config,$multi && $i == $#$lines);
         $i++;
       }
       $y++;

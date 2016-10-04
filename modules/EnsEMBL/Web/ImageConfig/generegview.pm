@@ -41,7 +41,6 @@ sub init_cacheable {
   $self->create_menus(qw(
     transcript
     prediction
-    variation
     functional
     other
     information
@@ -72,6 +71,7 @@ sub init_cacheable {
 
   my @gtex_tissues = sort keys %{$self->hub->species_defs->REST_gtex_tissues||{}};
 
+  # 
   my $gtex_tissue_example = "Whole_Blood";
   unless(any { $_ eq $gtex_tissue_example } @gtex_tissues) {
     $gtex_tissue_example = $gtex_tissues[0];
@@ -95,6 +95,11 @@ sub init_cacheable {
       strand => 'r',
       colours     => $self->species_defs->colour('variation'),
       description => $manplot_desc,
+      renderers => [
+        'off',              'Off',
+        'pvalue',           'p-value',
+        'beta',             'beta',
+      ]
     });
   }
 
@@ -105,10 +110,11 @@ sub init_cacheable {
     [ 'variation_legend',     '', 'variation_legend',     { display => 'on',  strand => 'r', menu => 'no', caption => 'Variant Legend'                                                              }],
   );
 
-  $self->modify_configs(
-    [ 'regbuild', 'variation_set_ph_variants' ],
-    { display => 'normal' }
-  );
+# Uncomment if variation track needs to be enable again (ENSWEB-2955) and dont forget to add variation in the main create_menu
+#  $self->modify_configs(
+#    [ 'regbuild', 'variation_set_ph_variants' ],
+#    { display => 'normal' }
+#  );
 
   $self->modify_configs(
     [ 'regulatory_features_core', 'regulatory_features_non_core' ],
@@ -128,7 +134,7 @@ sub init_cacheable {
     { depth => 25, height => 6 }
   );
 
-  $_->remove for grep $_->id ne 'variation_set_ph_variants', grep $_->get_data('node_type') eq 'track', @{$self->tree->get_node('variation')->get_all_nodes}; #only showing one track for variation
+#  $_->remove for grep $_->id ne 'variation_set_ph_variants', grep $_->get_data('node_type') eq 'track', @{$self->tree->get_node('variation')->get_all_nodes}; #only showing one track for variation; uncomment to bring it back
 
 }
 

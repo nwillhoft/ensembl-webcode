@@ -25,9 +25,20 @@ use warnings;
 use parent qw(EnsEMBL::Web::TextSequence::View);
 
 use EnsEMBL::Web::TextSequence::Legend::GeneSeq;
+use EnsEMBL::Web::TextSequence::Markup::Exons;
+use EnsEMBL::Web::TextSequence::Markup::Variations;
+use EnsEMBL::Web::TextSequence::Markup::LineNumbers;
 
 sub make_legend {
   return EnsEMBL::Web::TextSequence::Legend::GeneSeq->new(@_);
+}
+
+sub set_markup {
+  my ($self,$config) = @_;
+
+  $self->add_markup(EnsEMBL::Web::TextSequence::Markup::Exons->new) if $config->{'exon_display'};
+  $self->add_markup(EnsEMBL::Web::TextSequence::Markup::Variations->new([0,2])) if $config->{'snp_display'};
+  $self->add_markup(EnsEMBL::Web::TextSequence::Markup::LineNumbers->new) if $config->{'line_numbering'} ne 'off';
 }
 
 1;

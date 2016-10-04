@@ -45,6 +45,7 @@ use EnsEMBL::Web::Problem;
 use EnsEMBL::Web::Session;
 use EnsEMBL::Web::File::User;
 use EnsEMBL::Web::ViewConfig;
+use EnsEMBL::Web::Tools::Misc qw(style_by_filesize);
 use EnsEMBL::Web::Tools::FailOver::SNPedia;
 
 use EnsEMBL::Web::QueryStore;
@@ -406,6 +407,17 @@ sub url {
     }
   }
 
+  ## Remove version numbers if exporting
+  my $page_action = $controller || $action;
+  if ($page_action =~ /[Data|Image]Export/) {
+    while (my ($k, $v) = each (%pars)) {
+      if ($k =~ /[g|t]\d?/) { # g, t, t1, t2, etc
+        $v =~ s/\.\d+$//;
+        $pars{$k} = $v;
+      }
+    }
+  }
+
   my $url = join '/', grep $_, $self->species_defs->species_path($species), $controller, $type, $action, $function, $sub_function;
   
   return [ $url, \%pars ] if $flag;
@@ -423,6 +435,33 @@ sub url {
   $url =~ s/;$//;
 
   return $url;
+}
+
+sub get_permanent_url {
+  ## Get the permanent url for the current or given url
+  ## @param URL (string or hashref as expected by self->url method) (optional - takes current url as default)
+  my ($self, $url) = @_;
+
+  my $sd = $self->species_defs;
+
+  # if url hashref provided
+  $url  ||= $self->current_url;
+  $url    = $self->url($url) if ref $url;
+
+  return sprintf '%s/%s',
+    $self->_get_permanent_url_base =~ s/\/*$//r,
+    $url =~ s/^\/*//r;
+}
+
+sub _get_permanent_url_base {
+  ## @private
+  ## Get base url for permanent link
+  my $self  = shift;
+  my $sd    = $self->species_defs;
+
+  return $sd->ARCHIVE_BASE_DOMAIN
+    ? sprintf('%s://%s.%s', $sd->ENSEMBL_PROTOCOL, $sd->ARCHIVE_VERSION, $sd->ARCHIVE_BASE_DOMAIN)
+    : $sd->ENSEMBL_BASE_URL;
 }
 
 sub param {
@@ -559,8 +598,8 @@ sub get_ext_seq {
       $indexer = 'ENSEMBL_RETRIEVE';
       $exe     = 1;
     } else {
-      $indexer = $self->{'_species_defs'}->ENSEMBL_EXTERNAL_DATABASES->{$external_db} || $self->{'_species_defs'}->ENSEMBL_EXTERNAL_DATABASES->{'DEFAULT'} || 'DBFETCH';
-      $exe     = $self->{'_species_defs'}->ENSEMBL_EXTERNAL_INDEXERS->{$indexer};
+      $indexer = $self->species_defs->ENSEMBL_EXTERNAL_DATABASES->{$external_db} || $self->species_defs->ENSEMBL_EXTERNAL_DATABASES->{'DEFAULT'} || 'DBFETCH';
+      $exe     = $self->species_defs->ENSEMBL_EXTERNAL_INDEXERS->{$indexer};
     }
     if ($exe) {
       my $classname = "EnsEMBL::Web::ExtIndex::$indexer";
@@ -819,11 +858,11 @@ sub configure_user_data {
   my $species = $self->species;
 
   foreach my $view_config (map { $self->get_viewconfig({'component' => $_->[0], 'type' => $_->[1]}) || () } @{$self->components}) {
-    my $ic_code = $view_config->image_config;
+    my $ic_code = $view_config->image_config_type;
 
     next unless $ic_code;
 
-    my $image_config = $self->get_imageconfig($ic_code, $ic_code . time);
+    my $image_config = $self->get_imageconfig({type => $ic_code, cache_code => $ic_code . time});
     my $vertical     = $image_config->orientation eq 'vertical';
 
     while (@track_data) {
@@ -838,7 +877,7 @@ sub configure_user_data {
           my %valid     = @$renderers;
           if ($vertical) {
             $_->set_user_setting('ftype', $track->{'ftype'});
-            $_->set_user_setting('display', $track->{'style'} || EnsEMBL::Web::Tools::Misc::style_by_filesize($track->{'filesize'}));
+            $_->set_user_setting('display', $track->{'style'} || style_by_filesize($track->{'filesize'}));
           } else {
             my $default_display = $_->get_data('default_display') || 'normal';
             $_->set_user_setting('display', $valid{$default_display} ? $default_display : $renderers->[2]);

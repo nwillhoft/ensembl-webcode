@@ -81,7 +81,7 @@ sub get_redirect_uri {
   }
 
   ## Fix URL for V/SV Explore pages
-  if ($uri =~ m|^/Variation/Summary/|) {
+  if ($uri =~ m|/Variation/Summary|) {
     return $uri =~ s/Summary/Explore/r;
   }
 
@@ -281,13 +281,14 @@ sub postReadRequestHandler {
 
   return OK if $r->unparsed_uri eq '*';
 
-  # Any redirect needs to be performed at this stage?
-  if (my $redirect_uri = get_postread_redirect_uri($r)) {
-    return http_redirect($r, $redirect_uri);
-  }
-
   # VOID request to populate %ENV
   $r->subprocess_env;
+
+  # Any redirect needs to be performed at this stage?
+  if (my $redirect_uri = get_postread_redirect_uri($r)) {
+    $r->subprocess_env('LOG_REQUEST_IGNORE', 1);
+    return http_redirect($r, $redirect_uri);
+  }
 
   # save request start time for logs
   $r->subprocess_env('LOG_REQUEST_START', sprintf('%0.6f', time));
@@ -416,6 +417,7 @@ sub logHandler {
   my $t = time;
 
   return DECLINED if $r->unparsed_uri eq '*';
+  return DECLINED if $r->subprocess_env('LOG_REQUEST_IGNORE');
 
   # more vars for logs
   $r->subprocess_env('LOG_REQUEST_END',   sprintf('%0.6f', $t));
@@ -445,7 +447,7 @@ sub cleanupHandler {
   my $time_taken  = $r->subprocess_env('LOG_REQUEST_TIME');
   my $uri         = $r->subprocess_env('LOG_REQUEST_URI');
 
-  warn sprintf "REQUEST(%s): [served at %s by %s in %ss] %s\n", $r->method_number == M_POST ? 'P' : 'G', time_str($start_time), $$, $time_taken || '0', $uri;
+  warn sprintf "REQUEST(%s): [served at %s by %s in %sms] %s\n", $r->method_number == M_POST ? 'P' : 'G', time_str($start_time), $$, int(1000*$time_taken) || '0', $uri;
 
   if ($time_taken >= $SiteDefs::ENSEMBL_LONGPROCESS_MINTIME) {
 

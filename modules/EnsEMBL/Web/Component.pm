@@ -112,7 +112,7 @@ sub param {
     if (my $view_config = $self->viewconfig) {
       if (@_ > 1) {
         my @caller = caller;
-        warn sprintf "DEPRECATED: To set view_config param, use view_config->set method at %s line %s.\n", $caller[1], $caller[2];
+        #warn sprintf "DEPRECATED: To set view_config param, use view_config->set method at %s line %s.\n", $caller[1], $caller[2];
         $view_config->set(@_);
       }
       my @val = $view_config->get(@_);
@@ -348,7 +348,7 @@ sub set_cache_params {
 sub set_cache_key {
   my $self = shift;
   my $hub  = $self->hub;
-  my $key  = join '::', map $ENV{'CACHE_TAGS'}{$_} || (), qw(viewconfig image_config user_data);
+  my $key  = join '::', map $ENV{'CACHE_TAGS'}{$_} || (), qw(view_config image_config user_data);
   my $page = sprintf '::PAGE[%s]', md5_hex(join '/', grep $_, $hub->action, $hub->function);
     
   if ($key) {
@@ -596,7 +596,7 @@ sub new_image {
   my %formats     = EnsEMBL::Web::Constants::IMAGE_EXPORT_FORMATS;
   my $export      = $hub->param('export');
   my $id          = $self->id;
-  my $config_type = $self->viewconfig ? $self->viewconfig->image_config : undef;
+  my $config_type = $self->viewconfig ? $self->viewconfig->image_config_type : undef;
   my (@image_configs, $image_config);
 
   if (ref $_[0] eq 'ARRAY') {
@@ -618,7 +618,7 @@ sub new_image {
     $image_config->set_parameter('text_export', $export) if $formats{$export}{'extn'} eq 'txt';
   }
   
-  $_->set_parameter('component', $id) for grep $_->{'type'} eq $config_type, @image_configs;
+  $_->set_parameter('component', $id) for grep $_->type eq $config_type, @image_configs;
  
   my $image = EnsEMBL::Web::Document::Image::GD->new($hub, $self, \@image_configs);
   $image->drawable_container = EnsEMBL::Draw::DrawableContainer->new(@_) if $self->html_format;
@@ -820,7 +820,7 @@ sub trim_large_string {
       <div class="toggle_div">
         <span class="%s">%s</span>
         <span class="cell_detail">%s</span>
-        <span class="toggle_img"/>
+        <span class="toggle_img"></span>
       </div>
     </div>),
       join(" ",@summary_classes),$truncated,$string);  

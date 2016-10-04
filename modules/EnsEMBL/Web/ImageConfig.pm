@@ -43,6 +43,8 @@ use EnsEMBL::Web::ImageConfigExtension::UserTracks;
 
 use parent qw(EnsEMBL::Web::Config);
 
+sub cache_code :Accessor;
+
 # quick methods to get/set some of the parameters
 sub font_face           { return shift->_parameter('font_face',       @_);  }
 sub font_size           { return shift->_parameter('font_size',       @_);  }
@@ -65,17 +67,27 @@ sub config_type {
   return 'image_config';
 }
 
+sub cache_key {
+  ## override
+  my $self        = shift;
+  my $cache_key   = $self->SUPER::cache_key;
+     $cache_key  .= '::'.$self->cache_code;
+
+  return $cache_key;
+}
+
 sub _new {
   ## @override
   ## @param Hub object
   ## @param (String) Species
   ## @param (String) Type
-  ## @param (String) Code
-  my ($class, $hub, $species, $type, $code) = @_;
+  ## @param (String) Cache Code
+  my ($class, $hub, $species, $type, $cache_code) = @_;
 
   my $self = $class->SUPER::_new($hub, $species, $type);
 
-  $self->{'code'}             = $code;
+  $self->{'code'}             = $type;        # TODO - remove usage of code as type in the subclasses
+  $self->{'cache_code'}       = $cache_code;  # TODO - remove this once above is done
   $self->{'_parameters'}      = {}, # hash to contain all parameters
   $self->{'track_order'}      = []; # state changes for track order as saved in db
   $self->{'user_track_count'} = 0;
@@ -185,12 +197,25 @@ sub apply_user_settings {
   }
 }
 
+sub apply_user_cache_tags {
+  ## @override
+  ## Add an extra cache tag for user data
+  my $self  = shift;
+  my $menu  = $self->get_node('user_data');
+
+  # get image_config cache tag
+  $self->SUPER::apply_user_cache_tags;
+
+  # set user_data cache tag
+  if ($menu && $menu->has_child_nodes) {
+    $self->hub->controller->add_cache_tags({'user_data' => sprintf('USER_DATA[%s]', md5_hex(join '|', map $_->id, @{$menu->get_all_nodes}))});
+  }
+}
+
 sub get_cacheable_object {
   ## Abstract method implementation
   my $self    = shift;
-  my $object  = { map { $_ => $self->{$_} } qw(code _parameter species type _extra_menus) };
-
-  $object->{'_tree'} = $self->tree->get_cacheable_object;
+  my $object  = { map { $_ => $self->{$_} } qw(code _parameters species type _extra_menus _tree) };
 
   return $object;
 }

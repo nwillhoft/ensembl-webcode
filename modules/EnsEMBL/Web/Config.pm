@@ -24,6 +24,9 @@ use strict;
 use warnings;
 no warnings "uninitialized";
 
+use Data::Dumper;
+use Digest::MD5 qw(md5_hex);
+
 use EnsEMBL::Web::Attributes;
 use EnsEMBL::Web::Tree;
 
@@ -83,6 +86,7 @@ sub init {
 
   $self->init_non_cacheable;
   $self->apply_user_settings;
+  $self->apply_user_cache_tags;
 }
 
 sub cache_key {
@@ -154,6 +158,38 @@ sub save_user_settings {
   return 1;
 }
 
+sub get_shareable_settings {
+  ## Gets the data that can be shared with another user
+  ## @return Hashref
+  my $self      = shift;
+  my $record    = $self->hub->session->record({'type' => $self->config_type, 'code' => $self->code});
+  my $settings  = {};
+
+  if ($record->count) {
+    $settings = $record->data->raw;
+    $settings->{'code'} = $self->code;
+  }
+
+  return $settings;
+}
+
+sub receive_shared_settings {
+  ## Receives data and sets it as user settings for the current image/view config
+  my ($self, $settings) = @_;
+
+  my $session = $self->hub->session;
+
+  # in case config code is now changed since the share link was created
+  return unless $settings->{'code'} eq $self->code;
+
+  # delete any saved reference to data
+  delete $self->{'_user_settings'};
+
+  $settings->{'type'} = $self->config_type;
+
+  $self->hub->session->set_record_data(_rm_empty_vals($settings));
+}
+
 sub altered {
   ## Maintains a list of configs that have been altered
   ## @params List of config (name) that has been altered (optional)
@@ -171,6 +207,20 @@ sub is_altered {
   return scalar keys %{$_[0]->{'_altered'}} ? 1 : 0;
 }
 
+sub apply_user_cache_tags {
+  ## Applies extra tags to the current component (i.e. sets any tags if any changes made by the user can change the output of component)
+  ## Note: Not to be confused with the cache key against which the current config is saved in the cache
+  my $self        = shift;
+  my $config_type = $self->config_type;
+  my $settings    = $self->get_user_settings;
+
+  if (keys %$settings) {
+    $self->hub->controller->add_cache_tags({
+      $config_type => sprintf('%s[%s]', uc $config_type, md5_hex(Data::Dumper->new([$self->get_user_settings])->Sortkeys(1)->Terse(1)->Indent(0)->Maxdepth(0)->Dump))
+    });
+  }
+}
+
 sub _rm_empty_vals {
   ## @private
   ## @function
@@ -184,54 +234,6 @@ sub _rm_empty_vals {
     return @$pointer ? $pointer : undef;
   }
   return ($pointer // '') eq '' ? undef : "$pointer";
-}
-
-######## TODO
-
-sub share {
-  ## TODO
-  return;
-  # Remove anything from user settings that is:
-  #   Custom data that the user isn't sharing
-  #   A track from a trackhub that the user isn't sharing
-  #   Not for the species in the image
-  # Reduced track order of explicitly ordered tracks if they are after custom tracks which aren't shared
-
-  my ($self, %shared_custom_tracks) = @_;
-  my $user_settings     = EnsEMBL::Web::Root->deepcopy($self->get_user_settings);
-  my $species           = $self->species;
-  my $user_data         = $self->get_node('user_data');
-  my @unshared_trackhubs = grep $_->get('trackhub_menu') && !$shared_custom_tracks{$_->id}, @{$self->tree->child_nodes};
-  my @user_tracks       = map { $_ ? $_->nodes : () } $user_data;
-  my %user_track_ids    = map { $_->id => 1 } @user_tracks;
-  my %trackhub_tracks    = map { $_->id => [ map $_->id, $_->nodes ] } @unshared_trackhubs;
-  my %to_delete;
-
-  foreach (keys %$user_settings) {
-    next if $_ eq 'track_order';
-    next if $shared_custom_tracks{$_};
-
-    my $node = $self->get_node($_);
-
-    $to_delete{$_} = 1 unless $node && $node->parent_node; # delete anything that isn't for this species
-    $to_delete{$_} = 1 if $user_track_ids{$_};             # delete anything that isn't shared
-  }
-
-  foreach (@unshared_trackhubs) {
-    $to_delete{$_} = 1 for grep $user_settings->{$_}, @{$trackhub_tracks{$_->id} || []};  # delete anything for tracks in trackhubs that aren't shared
-  }
-
-  # Reduce track orders if custom tracks aren't shared
-  if (scalar keys %to_delete) {
-    my %track_ids_to_delete = map {( $_ => 1, "$_.b" => 1, "$_.f" => 1 )} keys %to_delete, map { @{$trackhub_tracks{$_->id} || []} } @unshared_trackhubs;
-
-    $user_settings->{'track_order'}{$species} = [ grep { !$track_ids_to_delete{$_->[0]} && !$track_ids_to_delete{$_->[1]} } @{$user_settings->{'track_order'}{$species}} ];
-  }
-
-  # remove track order for other species
-  delete $user_settings->{'track_order'}{$_} for grep $_ ne $species, keys %{$user_settings->{'track_order'}};
-
-  return $user_settings;
 }
 
 1;

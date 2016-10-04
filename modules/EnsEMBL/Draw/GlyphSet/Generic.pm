@@ -35,7 +35,10 @@ sub init {
   my @roles;
   ## Always show user tracks, regardless of overall configuration
   $self->{'my_config'}->set('show_empty_track', 1);
-  my $style = $self->my_config('style') || $self->my_config('display') || '';
+  ## We no longer support 'normal' as a renderer key, so force something more useful
+  my $display = $self->my_config('display') || $self->my_config('default_display');
+  $display = $self->my_config('default_display') if $display eq 'normal';
+  my $style = $self->my_config('style') || $display || '';
 
   if ($style eq 'wiggle' || $style =~ /signal/ || $style eq 'gradient') {
     push @roles, 'EnsEMBL::Draw::Role::Wiggle';
@@ -51,6 +54,18 @@ sub init {
   }
 
   $self->{'data'} = $self->get_data;
+}
+
+sub render_normal {
+## Backwards-compatibility with old drawing code
+## Different tracks have different opinions of what is 'normal',
+## so let the configuration decide
+  my $self = shift;
+  my $renderers = $self->{'my_config'}->get('renderers');
+  my $default = $self->{'my_config'}->get('default_display')
+                  || $renderers->[2] || 'as_alignment_nolabel';
+  my $method = 'render_'.$default;
+  $self->$method;
 }
 
 sub get_data {

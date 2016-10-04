@@ -46,6 +46,7 @@ sub _get_dom_tree {
   ## @private
   my $self      = shift;
   my $hub       = $self->hub;
+  my $sd        = $hub->species_defs;
   my $species   = $self->_species_list({'no_user' => 1});
   my $template  = $self->_fav_template;
   my $prehtml   = '';
@@ -107,13 +108,18 @@ sub _get_dom_tree {
     }, {
       'node_name'   => 'inputhidden',
       'class'       => 'js_param',
-      'name'        => 'species_url_template',
-      'value'       => encode_entities($hub->url({'species' => '{{species.key}}', 'type' => 'Info', 'function' => 'Index'}))
-    }, {
-      'node_name'   => 'inputhidden',
-      'class'       => 'js_param',
       'name'        => 'display_limit',
       'value'       => SPECIES_DISPLAY_LIMIT
+    }, {
+      'node_name'   => 'inputhidden',
+      'class'       => 'js_param json',
+      'name'        => 'taxon_labels',
+      'value'       => encode_entities(to_json($sd->TAXON_LABEL||{}))
+    }, {
+      'node_name'   => 'inputhidden',
+      'class'       => 'js_param json',
+      'name'        => 'taxon_order',
+      'value'       => encode_entities(to_json($sd->TAXON_ORDER))
     }]
   });
 }
@@ -126,7 +132,6 @@ sub _species_list {
   my $hub     = $self->hub;
   my $sd      = $hub->species_defs;
   my $species = $hub->get_species_info;
-  my $labels  = $sd->TAXON_LABEL;
   my $user    = $params->{'no_user'} ? undef : $hub->users_plugin_available && $hub->user;
   my $img_url = $sd->img_url || '';
   my @fav     = @{$hub->get_favourite_species(!$user)};
@@ -136,34 +141,39 @@ sub _species_list {
 
   for (@fav, sort {$species->{$a}{'common'} cmp $species->{$b}{'common'}} keys %$species) {
 
-    next if $done{$_} || $species->{$_}{'strain'};
+    next if $done{$_} || ($species->{$_}{'strain_collection'} && $species->{$_}{'strain'} !~ /reference/i);
 
     $done{$_} = 1;
 
-    my $homepage = $hub->url({'species' => $_, 'type' => 'Info', 'function' => 'Index', '__clear' => 1});
+    my $homepage      = $hub->url({'species' => $_, 'type' => 'Info', 'function' => 'Index', '__clear' => 1});
+    my $alt_assembly  = $sd->get_config($_, 'SWITCH_ASSEMBLY');
 
     push @list, {
       key         => $_,
-      group       => $labels->{$species->{$_}{'group'}} || $species->{$_}{'group'},
+      group       => $species->{$_}{'group'},
       homepage    => $homepage,
       name        => $species->{$_}{'name'},
       img         => sprintf('%sspecies/48/%s.png', $img_url, $_),
       common      => $species->{$_}{'common'},
       assembly    => $species->{$_}{'assembly'},
-      favourite   => $fav{$_} ? 1 : 0
+      assembly_v  => $species->{$_}{'assembly_version'},
+      favourite   => $fav{$_} ? 1 : 0,
+      strainspage => $species->{$_}{'strain_collection'} ? $hub->url({'species' => $_, 'type' => 'Info', 'function' => 'Strains', '__clear' => 1}) : 0,
+      has_alt     => $alt_assembly ? 1 : 0
     };
 
-    if (my $alt_assembly = $sd->get_config($_, 'SWITCH_ASSEMBLY')) {
+    if ($alt_assembly) {
       push @list, {
         key         => $_,
-        group       => $labels->{$species->{$_}{'group'}} || $species->{$_}{'group'},
+        group       => $species->{$_}{'group'},
         homepage    => sprintf('http://%s%s', $sd->get_config($_, 'SWITCH_ARCHIVE_URL'), $homepage),
         name        => $species->{$_}{'name'},
         img         => sprintf('%sspecies/48/%s_%s.png', $img_url, $_, $alt_assembly),
         common      => $species->{$_}{'common'},
         assembly    => $alt_assembly,
         favourite   => $fav{$_} ? 1 : 0,
-        external    => 1
+        external    => 1,
+        has_alt     => 1,
       };
     }
   }

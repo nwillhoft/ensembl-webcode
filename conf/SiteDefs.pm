@@ -20,8 +20,8 @@ use Text::Wrap;
 $Text::Wrap::columns = 75;
 
 our $ENSEMBL_VERSION           = 86;
-our $ARCHIVE_VERSION           = 'Sep2016';    # Change this to the archive site for this version
-our $ENSEMBL_RELEASE_DATE      = 'Sept 2016';
+our $ARCHIVE_VERSION           = 'Oct2016';    # Change this to the archive site for this version
+our $ENSEMBL_RELEASE_DATE      = 'Oct 2016';
 
 #### START OF VARIABLE DEFINITION #### DO NOT REMOVE OR CHANGE THIS COMMENT ####
 
@@ -208,6 +208,8 @@ our $ENSEMBL_DEBUG_FLAG_NAMES     = [qw(
   WIZARD_MESSAGES
   VERBOSE_STARTUP
 )];
+
+our $ENSEMBL_SPECIES_SELECT_DIVISION = defer { "$ENSEMBL_DOCROOT/e_species_divisions.json" };
 
 my $i = 0;
 

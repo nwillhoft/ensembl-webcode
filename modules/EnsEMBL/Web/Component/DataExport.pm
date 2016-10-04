@@ -34,6 +34,14 @@ use base qw(EnsEMBL::Web::Component);
 
 sub export_options :Abstract;
 
+sub new {
+  ## @override
+  ## Change id to avoid clash with the underlying component
+  my $self = shift->SUPER::new(@_);
+  $self->id('DataExport_'.$self->id);
+  return $self;
+}
+
 sub viewconfig {
   ## @override
   ## Gets view config of the related component
@@ -62,7 +70,9 @@ sub create_form {
 
   # get user specified values for url/viewconfig
   for (keys %$settings) {
-    $settings->{$_}{'value'} = $self->param($_) if(ref $settings->{$_} eq 'HASH');
+    next unless ref $settings->{$_} eq 'HASH';
+    next if $settings->{'no_user'};
+    $settings->{$_}{'value'} = $self->param($_);
   }
 
   my $format_label = {
@@ -231,7 +241,7 @@ sub create_form {
         else {
           if ($field_info{'type'} =~ /Checkbox|CheckBox/) {
             $field_info{'selected'} = 1 if $field_info{'value'} eq 'on';
-            $field_info{'value'} = 'on' if $field_info{'value'} eq 'off'; ## stupid checkboxes are stupid
+            $field_info{'value'} = 'on' if ($field_info{'value'}||'off') eq 'off'; ## stupid checkboxes are stupid
           }
           $params = \%field_info;
         }

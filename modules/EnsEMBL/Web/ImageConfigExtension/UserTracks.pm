@@ -907,6 +907,8 @@ sub _user_track_settings {
   else {
     @user_renderers = (@{$self->_alignment_renderers}, 'difference', 'Differences');
   }
+  $strand = 'f' if $format =~ /vcf/;
+  $default = $user_renderers[2] unless $default;
 
   return ($strand, \@user_renderers, $default);
 }

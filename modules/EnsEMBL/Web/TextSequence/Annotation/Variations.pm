@@ -5,19 +5,21 @@ use warnings;
 
 use parent qw(EnsEMBL::Web::TextSequence::Annotation);
 
+use EnsEMBL::Web::PureHub;
+
 sub annotate {
-  my ($self, $config, $slice_data, $markup, $seq, $hub,$sequence) = @_;
+  my ($self, $config, $slice_data, $markup, $seq, $ph,$real_sequence) = @_;
   my $name   = $slice_data->{'name'};
   my $slice  = $slice_data->{'slice'};
 
-  my $species = $slice->can('genome_db') ? ucfirst($slice->genome_db->name) : $hub->species;
-  return unless $hub->database('variation', $species);
+  my $sequence = $real_sequence->legacy;
+  return unless $ph->database($config->{'species'},'variation');
   my $strand = $slice->strand;
   my $focus  = $name eq ($config->{'species'}||'') ? $config->{'focus_variant'} : undef;
   my $snps   = [];
   my $u_snps = {};
   my $adaptor;
-  my $vf_adaptor = $hub->database('variation')->get_VariationFeatureAdaptor;
+  my $vf_adaptor = $ph->get_adaptor($config->{'species'},'variation','get_VariationFeatureAdaptor');
   eval {
     # NOTE: currently we can't filter by both population and consequence type, since the API doesn't support it.
     # This isn't a problem, however, since filtering by population is disabled for now anyway.
@@ -35,6 +37,8 @@ sub annotate {
   };
   return unless scalar @$snps;
 
+  $snps = [ grep { !$self->hidden_source($_,$config) } @$snps ];
+
   foreach my $u_slice (@{$slice_data->{'underlying_slices'} || []}) {
     next if $u_slice->seq_region_name eq 'GAP';
 
@@ -48,12 +52,12 @@ sub annotate {
     };
   }
 
-  $snps = [ grep $_->length <= $config->{'snp_length_filter'} || $config->{'focus_variant'} && $config->{'focus_variant'} eq $_->dbID, @$snps ] if $config->{'hide_long_snps'};
+  $snps = [ grep $_->length <= $config->{'snp_length_filter'} || $config->{'focus_variant'} && $config->{'focus_variant'} eq $_->dbID, @$snps ] if ($config->{'hide_long_snps'}||'off') ne 'off';
 
   # order variations descending by worst consequence rank so that the 'worst' variation will overwrite the markup of other variations in the same location
   # Also prioritize shorter variations over longer ones so they don't get hidden
   # Prioritize focus (from the URL) variations over all others
-  my @ordered_snps = map $_->[3], sort { $a->[0] <=> $b->[0] || $b->[1] <=> $a->[1] || $b->[2] <=> $a->[2] } map [ (($_->dbID == $focus)||0), $_->length, $_->most_severe_OverlapConsequence->rank, $_ ], @$snps;
+  my @ordered_snps = map $_->[3], sort { $a->[0] <=> $b->[0] || $b->[1] <=> $a->[1] || $b->[2] <=> $a->[2] } map [ (($_->dbID||0) == ($focus||-1)), $_->length, $_->most_severe_OverlapConsequence->rank, $_ ], @$snps;
 
   foreach (@ordered_snps) {
     my $dbID = $_->dbID;
@@ -70,14 +74,6 @@ sub annotate {
     my $snp_type       = $_->can('display_consequence') ? lc $_->display_consequence : 'snp';
        $snp_type       = lc [ grep $config->{'consequence_types'}{$_}, @{$_->consequence_type} ]->[0] if $config->{'consequence_types'};
        $snp_type       = 'failed' if $failed;
-    my $ambigcode;
-
-    if ($config->{'variation_sequence'}) {
-      my $url = $hub->url({ species => $name, r => undef, vf => $dbID, v => undef });
-
-      $ambigcode = $var_class =~ /in-?del|insertion|deletion/ ? '*' : $_->ambig_code;
-      $ambigcode = $variation_name eq $config->{'v'} ? $ambigcode : qq{<a href="$url">$ambigcode</a>} if $ambigcode;
-    }
 
     # Use the variation from the underlying slice if we have it.
     my $snp = (scalar keys %$u_snps && $u_snps->{$variation_name}) ? $u_snps->{$variation_name} : $_;
@@ -134,30 +130,35 @@ sub annotate {
     # Add the chromosome number for the link text if we're doing species comparisons or resequencing.
     $snp_start = $snp->seq_region_name . ":$snp_start" if scalar keys %$u_snps && $config->{'line_numbering'} eq 'slice';
 
-    my $url = $hub->url({
+    my $url = {
       species => $config->{'ref_slice_name'} ? $config->{'species'} : $name,
       type    => 'Variation',
       action  => 'Explore',
       v       => $variation_name,
       vf      => $dbID,
       vdb     => 'variation'
-    });
+    };
 
-    my $link_text  = qq{ <a href="$url">$snp_start: $variation_name</a>;};
-    (my $ambiguity = $config->{'ambiguity'} ? $_->ambig_code($strand) : '') =~ s/-//g;
+    my $link = {
+      label => "$snp_start: $variation_name",
+      url => $url,
+    };
+
+    (my $ambiguity = $config->{'ambiguity'} ? ($_->ambig_code($strand)||'') : '') =~ s/-//g;
 
     for ($s..$e) {
       # Don't mark up variations when the secondary strain is the same as the sequence.
       # $sequence->[-1] is the current secondary strain, as it is the last element pushed onto the array
       # uncomment last part to enable showing ALL variants on ref strain (might want to add as an opt later)
-      next if defined $config->{'match_display'} && $sequence->[-1][$_]{'letter'} =~ /[\.\|~$sequence->[0][$_]{'letter'}]/i;# && scalar @$sequence > 1;
+
+      next if defined $config->{'match_display'} && ($sequence->[$_]{'letter'} =~ /[\.\|~]/i or $sequence->[$_]{'match'});
 
       $markup->{'variants'}{$_}{'focus'}     = 1 if $config->{'focus_variant'} && $config->{'focus_variant'} eq $dbID;
       $markup->{'variants'}{$_}{'type'}      = $snp_type;
       $markup->{'variants'}{$_}{'ambiguity'} = $ambiguity;
       $markup->{'variants'}{$_}{'alleles'}  .= ($markup->{'variants'}{$_}{'alleles'} ? "\n" : '') . $allele_string;
 
-      unshift @{$markup->{'variants'}{$_}{'link_text'}}, $link_text if $_ == $s;
+      unshift @{$markup->{'variants'}{$_}{'links'}}, $link if $_ == $s;
 
       $markup->{'variants'}{$_}{'href'} ||= {
         species => $config->{'ref_slice_name'} ? $config->{'species'} : $name,
@@ -172,11 +173,9 @@ sub annotate {
       } else {
         push @{$markup->{'variants'}{$_}{'href'}{'v'}},  $variation_name;
       }
-
-      $sequence->[$_] = $ambigcode if $config->{'variation_sequence'} && $ambigcode;
     }
 
-    $config->{'focus_position'} = [ $s..$e ] if $dbID eq $config->{'focus_variant'};
+    $config->{'focus_position'} = [ $s..$e ] if ($dbID||"\r") eq ($config->{'focus_variant'}||"\n");
   }
 }
 

@@ -51,8 +51,9 @@ sub content {
   }
   
   ## set path information for LD calculations
-  $Bio::EnsEMBL::Variation::DBSQL::LDFeatureContainerAdaptor::BINARY_FILE = $hub->species_defs->ENSEMBL_CALC_GENOTYPES_FILE;
-  $Bio::EnsEMBL::Variation::DBSQL::LDFeatureContainerAdaptor::TMP_PATH    = $hub->species_defs->ENSEMBL_TMP_TMP;
+  $Bio::EnsEMBL::Variation::DBSQL::LDFeatureContainerAdaptor::BINARY_FILE     = $hub->species_defs->ENSEMBL_CALC_GENOTYPES_FILE;
+  $Bio::EnsEMBL::Variation::DBSQL::LDFeatureContainerAdaptor::VCF_BINARY_FILE = $hub->species_defs->ENSEMBL_LD_VCF_FILE;
+  $Bio::EnsEMBL::Variation::DBSQL::LDFeatureContainerAdaptor::TMP_PATH        = $hub->species_defs->ENSEMBL_TMP_TMP;
   
   my $image_config = $hub->get_imageconfig('ldview');
   my $parameters   = { 
@@ -67,7 +68,7 @@ sub content {
   
   # Do images for each population
   foreach my $pop_name (sort { $a cmp $b } map { $object->pop_name_from_id($_) || () } @{$object->current_pop_id}) {
-    my $population_image_config = $hub->get_imageconfig('ldview', $pop_name);
+    my $population_image_config = $hub->get_imageconfig({type => 'ldview', cache_code => $pop_name});
     $population_image_config->init_population($parameters, $pop_name);
     push @$containers_and_configs, $slice, $population_image_config;
   }

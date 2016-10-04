@@ -70,6 +70,7 @@ sub process {
   $compression = $hub->param('compression');
   $download_type = $hub->param('download_type');
   $name = $hub->param('name');
+  my $component;
 
   if (!$format_info) {
     $error = 'Format not recognised';
@@ -78,7 +79,6 @@ sub process {
     ## TODO - replace relevant parts with Bio::EnsEMBL::IO::Writer in due course
   
     ## Create the component we need to get data from 
-    my $component;
     ($component, $error) = $self->object->create_component;
 
     # Override the options saved in viewconfig by the one selected by the user in the form (these settings are not saved to session since we don't call session->store afterwards)
@@ -164,7 +164,7 @@ sub process {
       push @core_params, $species;
     } 
     foreach (@core_params) {
-      my @values = $hub->param($_);
+      my @values = $component->param($_);
       $url_params->{$_} = scalar @values > 1 ? \@values : $values[0];
     }
   }
@@ -191,28 +191,47 @@ sub write_rtf {
   my ($self, $component) = @_;
 
   $self->hub->param('exon_display', 'on'); ## force exon highlighting on
-  my ($sequence, $config, $block_mode) = $component->initialize_export; 
-  return 'No sequence generated - did you select any required options?' unless scalar(@{$sequence||{}});
 
-  my $view = $component->view;
-  $view->output(EnsEMBL::Web::TextSequence::Output::RTF->new);
-  my @vseqs = @{$view->sequences};
-
-  $view->width($config->{'display_width'});
-  $view->transfer_data($sequence,$config);
-  my $rtflist = $view->output->build_output($config,$config->{'line_numbers'},@{$view->sequences}>1,0);
-
+  # XXX hack
+  my ($sequence, $config, $block_mode);
   my $string;
-  my $rtf = RTF::Writer->new_to_string(\$string);
-  $rtf->prolog(
-    fonts  => [ 'Courier New' ],
-    colors => $view->output->c2s->colours,
-  );
-  $rtflist->emit($rtf);
-  #warn "RTF: $string\n";
+  if($component->can('initialize_export_new')) {
+    ($sequence, $config, $block_mode) = $component->initialize_export_new;
+    return 'No sequence generated - did you select any required options?' unless scalar(@{$sequence||{}});
 
-  $rtf->close;
+    my $view = $component->view;
+    $view->output(EnsEMBL::Web::TextSequence::Output::RTF->new);
 
+    $view->width($config->{'display_width'});
+    $view->transfer_data_new($config);
+    my $rtflist = $view->output->build_output($config,$config->{'line_numbers'},@{$view->sequences}>1,0);
+
+    my $rtf = RTF::Writer->new_to_string(\$string);
+    $rtf->prolog(
+      fonts  => [ 'Courier New' ],
+      colors => $view->output->c2s->colours,
+    );
+    $rtflist->emit($rtf);
+    $rtf->close;
+  } else {
+    ($sequence, $config, $block_mode) = $component->initialize_export;
+    return 'No sequence generated - did you select any required options?' unless scalar(@{$sequence||{}});
+
+    my $view = $component->view;
+    $view->output(EnsEMBL::Web::TextSequence::Output::RTF->new);
+
+    $view->width($config->{'display_width'});
+    $view->transfer_data($sequence,$config);
+    my $rtflist = $view->output->build_output($config,$config->{'line_numbers'},@{$view->sequences}>1,0);
+
+    my $rtf = RTF::Writer->new_to_string(\$string);
+    $rtf->prolog(
+      fonts  => [ 'Courier New' ],
+      colors => $view->output->c2s->colours,
+    );
+    $rtflist->emit($rtf);
+    $rtf->close;
+  }
   my $result = $self->write_line($string);
   return $result->{'error'} || undef;
 }

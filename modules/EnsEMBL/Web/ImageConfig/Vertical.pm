@@ -51,7 +51,8 @@ sub load_user_tracks {
     my $format = $_->get_data('format');
 
     # except bigwig, remove all tracks with big remote formats
-    if ($remote_formats{lc $format} && lc $format ne 'bigwig') {
+    if (($remote_formats{lc $format} && lc $format ne 'bigwig')
+          || (lc $format eq 'vcf' && $_->get_data('url'))) {
       $_->remove;
     } else {
       my ($strand, $renderers) = $self->_user_track_settings($format);
@@ -117,7 +118,7 @@ sub load_user_track_data {
     next if $display eq 'off';
     ## Of the remote formats, only bigwig is currently supported on this scale
     my $format = lc $track->get('format');
-    next if ($format eq 'bigwig' || $format eq 'bam' || $format eq 'cram');
+    next if ($format eq 'bigbed' || $format eq 'bam' || $format eq 'cram');
 
     my $logic_name = $track->get('logic_name');
     my $colour     = \@colours;
@@ -233,8 +234,8 @@ sub get_parsed_features {
     if ($track->{'metadata'}) {
       $name = $track->{'metadata'}{'name'};
       $max = $track->{'metadata'}{'max_value'} if (defined($track->{'metadata'}{'max_value'}) && $max < $track->{'metadata'}{'max_value'});
-      $mapped += $track->{'metadata'}{'mapped'};
-      $unmapped += $track->{'metadata'}{'unmapped'};
+      $mapped += $track->{'metadata'}{'mapped'} || 0;
+      $unmapped += $track->{'metadata'}{'unmapped'} || 0;
     }
 
     if ($bins) {
@@ -249,7 +250,6 @@ sub get_parsed_features {
     else {
       $data->{$name} = {'features' => $track->{'features'} || [],
                         'metadata' => $track->{'metadata'} || {}};
-      push @{$data->{$name}{'features'}}, @{$track->{'features'} || []};
     }
 
     $count++ unless ($track->{'metadata'}{'color'} || $track->{'metadata'}{'colour'});

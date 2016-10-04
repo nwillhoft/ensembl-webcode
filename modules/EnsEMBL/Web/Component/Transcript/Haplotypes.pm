@@ -60,7 +60,7 @@ sub content {
 
   # filter?
   my $filter;
-  if($self->hub->param('filter_enabled') eq 'on') {
+  if($self->param('filter_enabled') eq 'on') {
     
     # warn user filtering is enabled
     $html .= $self->_info(
@@ -139,7 +139,7 @@ sub content {
     title => 'Variants',
     sort  => 'html_numeric',
     help  => 'Variants that contribute to this haplotype\'s difference(s) to the reference',
-  } if $self->hub->param('show_variants') eq 'on';
+  } if $self->param('show_variants') eq 'on';
 
   $table->add_columns(@cols);
   
@@ -235,7 +235,7 @@ sub render_haplotype_row {
   my $ht = shift;
   
   my $pop_objs    = $self->object->population_objects;
-  my $pop_struct  = $self->object->population_structure($pop_objs);
+  my $pop_struct  = $self->population_structure($pop_objs);
   my %pop_descs   = map {$_->name => $_->description} @$pop_objs;
 
   my $flags = $ht->can('get_all_flags') ? $ht->get_all_flags() : [];
@@ -247,6 +247,8 @@ sub render_haplotype_row {
     'deleterious_sift_or_polyphen' => 2,
     'indel' => 3,
     'stop_change' => 4,
+    'resolved_frameshift' => 1,
+    'frameshift' => 4,
   );
   $score += $scores{$_} || 1 for @$flags;
 
@@ -263,16 +265,16 @@ sub render_haplotype_row {
     freq      => sprintf("%.3g (%i)", $ht->frequency, $ht->count),
   };
 
-  $row->{variants} = join(", ", map {$self->render_var_link($_)} @{$ht->get_all_VariationFeatures}) if $self->hub->param('show_variants') eq 'on';
+  $row->{variants} = join(", ", map {$self->render_var_link($_)} @{$ht->get_all_VariationFeatures}) if $self->param('show_variants') eq 'on';
   
   # add per-population frequencies
   my $pop_freqs = $ht->get_all_population_frequencies;
   my $pop_counts = $ht->get_all_population_counts;
   
-  foreach my $pop(keys %$pop_counts) {
+  foreach my $pop(keys %$pop_struct) {
     my $short_pop = $self->short_population_name($pop);
     
-    $row->{$short_pop} = sprintf("%.3g (%i)", $pop_freqs->{$pop}, $pop_counts->{$pop});
+    $row->{$short_pop} = sprintf("%.3g (%i)", $pop_freqs->{$pop} || 0, $pop_counts->{$pop} || 0);
   }
   
   return $row;

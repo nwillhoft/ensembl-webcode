@@ -26,7 +26,6 @@ use HTML::Entities qw(encode_entities);
 use List::Util qw(min max);
 use EnsEMBL::Web::Document::Table;
 use EnsEMBL::Web::TextSequence::View::ComparaAlignments;
-use EnsEMBL::Web::TextSequence::Output::WebSubslice;
 
 use base qw(EnsEMBL::Web::Component::TextSequence);
 
@@ -50,7 +49,7 @@ sub content {
     );
   }
   
-  my $align_param = $hub->param('align');
+  my $align_param = $hub->param('align') || '';
 
   my ($align, $target_species, $target_slice_name_range) = split '--', $align_param;
   my $target_slice = $object->get_target_slice;
@@ -207,9 +206,12 @@ sub content {
 sub content_sub_slice {
   my $self = shift;
 
-  $self->view->output(EnsEMBL::Web::TextSequence::Output::WebSubslice->new);
-  my ($sequence, $config) = $self->_get_sequence(@_);  
-  return $self->build_sequence($sequence, $config,1);
+  $self->view->output($self->view->output->subslicer);
+  my ($sequence, $config) = $self->_get_sequence(@_);
+  my $html = '';
+  $html .= $self->describe_filter($config) unless $self->param('follow');
+  $html .= $self->build_sequence_new($sequence, $config,1);
+  return $html;
 }
 
 sub _get_sequence {
@@ -270,20 +272,14 @@ sub _get_sequence {
 
   my ($sequence, $markup) = $self->get_sequence_data($config->{'slices'}, $config);
 
+  my @s2 = @{$view->root_sequences};
+
   foreach my $slice (@{$config->{'slices'}}) {
-    my $seq = $view->new_sequence;
+    my $seq = shift @s2;
     $seq->name($slice->{'display_name'} || $slice->{'name'});
   }
-  
-  # markup_comparisons must be called first to get the order of the comparison sequences
-  # The order these functions are called in is also important because it determines the order in which things are added to $config->{'key'}
-  $self->markup_comparisons($sequence, $markup, $config)   if $config->{'align'};
-  $self->markup_conservation($sequence, $config)           if $config->{'conservation_display'} ne 'off';
-  $self->markup_region_change($sequence, $markup, $config) if $config->{'region_change_display'} ne 'off';
-  $self->markup_codons($sequence, $markup, $config)        if $config->{'codons_display'} ne 'off';
-  $self->markup_exons($sequence, $markup, $config)         if $config->{'exon_display'} ne 'off';
-  $self->markup_variation($sequence, $markup, $config)     if $config->{'snp_display'} ne 'off';
-  $self->markup_line_numbers($sequence, $config)           if $config->{'number'};
+
+  $view->markup_new($sequence,$markup,$config);
   
   # Only if this IS NOT a sub slice - print the key and the slice list
   my $template = '';
@@ -630,29 +626,6 @@ sub _get_target_slice_table {
 
 }
 
-sub markup_region_change {
-  my $self = shift;
-  my ($sequence, $markup, $config) = @_;
-
-  my ($change, $class, $seq);
-  my $i = 0;
-
-  foreach my $data (@$markup) {
-    $change = 1 if scalar keys %{$data->{'region_change'}};
-    $seq = $sequence->[$i];
-    
-    foreach (sort {$a <=> $b} keys %{$data->{'region_change'}}) {      
-      $seq->[$_]->{'class'} .= 'end ';
-      $seq->[$_]->{'title'} .= ($seq->[$_]->{'title'} ? "\n" : '') . $data->{'region_change'}->{$_} if ($config->{'title_display'}||'off') ne 'off';
-    }
-    
-    $i++;
-  }
-  
-  $config->{'key'}->{'other'}{'align_change'} = 1 if $change;
-}
-
-
 #Find the set of low coverage species (genome_dbs) from the EPO_LOW_COVERAGE set (high + low coverage)
 #This could be improved by having a direct link between the EPO_LOW_COVERAGE and the corresponding high coverage EPO set
 sub _get_low_coverage_genome_db_sets {
@@ -664,7 +637,7 @@ sub _get_low_coverage_genome_db_sets {
   #Fetch all the high coverage EPO method_link_species_sets
   my $high_coverage_mlsss = $mlss->adaptor->fetch_all_by_method_link_type("EPO");
   foreach my $high_coverage_mlss (@$high_coverage_mlsss) {
-    my $species_set = $high_coverage_mlss->species_set_obj;
+    my $species_set = $high_coverage_mlss->species_set;
     foreach my $genome_db (@{$species_set->genome_dbs}) {
       $high_coverage_species_set->{ $high_coverage_mlss}{$genome_db->name} = 1;
     }
@@ -673,19 +646,19 @@ sub _get_low_coverage_genome_db_sets {
   #Find high coverage mlss which has the same tag name (eg mammals) and is a subset of the low_coverage species set
   foreach my $high_mlss (@$high_coverage_mlsss) {
     my $counter = 0;
-    foreach my $low_genome_db (@{$mlss->species_set_obj->genome_dbs}) {
-      if ($high_coverage_species_set->{$high_mlss}{$low_genome_db->name} && $mlss->species_set_obj->get_value_for_tag("name") eq $high_mlss->species_set_obj->get_value_for_tag("name")) {
+    foreach my $low_genome_db (@{$mlss->species_set->genome_dbs}) {
+      if ($high_coverage_species_set->{$high_mlss}{$low_genome_db->name} && $mlss->species_set->name eq $high_mlss->species_set->name) {
         $counter++;
       }
     }
-    if ($counter == @{$high_mlss->species_set_obj->genome_dbs}) {
+    if ($counter == @{$high_mlss->species_set->genome_dbs}) {
       $found_high_mlss = $high_mlss;
       last;
     }
   }
 
   my $low_coverage_species;
-  foreach my $low_genome_db (@{$mlss->species_set_obj->genome_dbs}) {
+  foreach my $low_genome_db (@{$mlss->species_set->genome_dbs}) {
     unless ($high_coverage_species_set->{$found_high_mlss}{$low_genome_db->name}) {
 #      push @$low_coverage_species, $low_genome_db->dbID;
       $low_coverage_species->{$low_genome_db->dbID} = 1;
@@ -722,16 +695,16 @@ sub get_export_data {
   return $obj;
 }
 
-sub initialize_export {
-  my $self = shift;
+sub initialize_export_new {
+  my ($self, $slice) = @_;
   my $hub = $self->hub;
 
-  my $object    = $self->builder->object($hub->param('data_type'));
-  my $location  = $object->Obj;
-  my $cdb       = $hub->param('cdb') || 'compara';
+  my $object    = $self->builder->object($self->param('data_type'));
+  $slice      ||= $object->slice;
+  my $cdb       = $self->param('cdb') || 'compara';
   my ($slices)  = $object->get_slices({
-                        'slice'   => $object->slice,
-                        'align'   => $hub->param('align'),
+                        'slice'   => $slice,
+                        'align'   => $self->param('align'),
                         'species' => $hub->species,
                         'start'   => undef,
                         'end'     => undef,
@@ -739,7 +712,7 @@ sub initialize_export {
                         'target'  => $object->get_target_slice,
                         'image'   => $self->has_image
                 });
-  return $self->_get_sequence($object->slice, $slices, undef, $cdb);
+  return $self->_get_sequence($slice, $slices, undef, $cdb);
 }
 
 sub make_view {

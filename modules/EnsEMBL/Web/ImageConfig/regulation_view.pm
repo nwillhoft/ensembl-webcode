@@ -26,8 +26,8 @@ use EnsEMBL::Web::Utils::Sanitize qw(clean_id);
 
 use parent qw(EnsEMBL::Web::ImageConfig);
 
-sub cache_key        { return $_[0]->code eq 'cell_line' ? '' : $_[0]->SUPER::cache_key; }
-sub load_user_tracks { return $_[0]->SUPER::load_user_tracks($_[1]) unless $_[0]->code eq 'set_evidence_types'; } # Stops unwanted cache tags being added for the main page (not the component)
+sub cache_key        { return $_[0]->cache_code eq 'cell_line' ? '' : $_[0]->SUPER::cache_key; }
+sub load_user_tracks { return $_[0]->SUPER::load_user_tracks($_[1]) unless $_[0]->cache_code eq 'set_evidence_types'; } # Stops unwanted cache tags being added for the main page (not the component)
 
 sub init_cacheable {
   ## @override
@@ -37,7 +37,7 @@ sub init_cacheable {
 
   my @feature_sets  = ('cisRED', 'VISTA', 'miRanda', 'NestedMICA', 'REDfly CRM', 'REDfly TFBS', 'search');
   my $cell_info     = $self->species_defs->databases->{'DATABASE_FUNCGEN'}{'tables'}{'cell_type'}{'ids'};
-  my @cell_lines    = map { $cell_info->{$_} > 0 } sort keys %$cell_info;
+  my @cell_lines    = grep { $cell_info->{$_} > 0 } sort keys %$cell_info;
 
   s/\:\d*$// for @cell_lines;
 
@@ -114,12 +114,12 @@ sub init_cacheable {
     $node->set('display',$type =~ /_core/ ? 'compact' : 'normal');
   }
   foreach my $cell_line (@cell_lines) {
-    clean_id($cell_line); # Eugh, modifies arg.
+    $cell_line = clean_id($cell_line); # Eugh, modifies arg.
     $self->{'reg_feats_tracks'}{$_} = 1 for "reg_feats_$cell_line", "reg_feats_core_$cell_line", "reg_feats_non_core_$cell_line", "seg_$cell_line";
   }
 
-  if ($self->{'code'} ne $self->{'type'}) {
-    my $func = "init_$self->{'code'}";
+  if ($self->cache_code ne $self->type) {
+    my $func = "init_".$self->cache_code;
     $self->$func if $self->can($func);
   }
 }
@@ -135,16 +135,13 @@ sub init_top {
   );
 
   $_->remove for map $self->get_node($_) || (), keys %{$self->{'reg_feats_tracks'}};
-  $_->remove for grep $_->id =~ /_legend/, $self->get_tracks;
+  $_->remove for grep $_->id =~ /_legend/, @{$self->get_tracks};
 }
 
 sub init_cell_line {
   my $self = shift;
-  my (%on, $i);
 
-  $_->remove for grep !$self->{'reg_feats_tracks'}{$_->id}, $self->get_tracks;
-
-  $on{$_->data->{'cell_line'}} ||= [ $_, $i++ ] for grep $_->get('display') ne 'off', $self->get_tracks;
+  $_->remove for grep !$self->{'reg_feats_tracks'}{$_->id}, @{$self->get_tracks};
 
   $self->add_tracks('other',
     [ 'draggable', '', 'draggable', { display => 'normal', strand => 'b', menu => 'no' }]
@@ -154,7 +151,7 @@ sub init_cell_line {
 sub init_bottom {
   my $self = shift;
 
-  $_->remove for grep $_->id !~ /_legend/, $self->get_tracks;
+  $_->remove for grep $_->id !~ /_legend/, @{$self->get_tracks};
 
   $self->add_tracks('other',
     [ 'fg_background_regulation', '', 'fg_background_regulation', { display => 'normal', strand => 'r', menu => 'no', tag => 0            }],

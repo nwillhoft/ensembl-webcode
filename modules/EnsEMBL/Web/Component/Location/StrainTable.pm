@@ -77,9 +77,19 @@ sub content {
   my $self      = shift;
   my $hub       = $self->hub;
   my $object    = $self->object;
-  my $threshold = 10001;
+  my $threshold = 100001;
 
-  return $self->_warning('Region too large', '<p>The region selected is too large to display in this view - use the navigation above to zoom in...</p>') if $object->length > $threshold;
+  my $r = $self->param('r');
+  $r =~ /^(.*):(\d+)-(\d+)$/;
+  my ($chr,$s,$e) = ($1,$2,$3);
+  my $ss = int(($s+$e)/2);
+  my $ee = $ss+50000;
+  $ss -= 50000;
+  my $rr = "$chr:$ss-$ee";
+  my $centre_url = $hub->url({
+    r => $rr,
+  });
+  return $self->_warning('Region too large',qq(<p>The region selected is too large to display in this view - use the navigation above to zoom in or <a href="$centre_url">click here to zoom into $rr</a>...</p>)) if $object->length > $threshold;
 
   my $slice = $object->slice;
      $slice = $slice->invert if $hub->param('strand') == -1;
@@ -154,7 +164,7 @@ sub make_table {
       helptip => 'Variant identifier',
       link_url => {
         type   => 'Variation',
-        action => 'Summary',
+        action => 'Explore',
         vf     => ["vf"],
         v      => undef # remove the 'v' param from the links if already present
       }
@@ -203,10 +213,12 @@ sub make_table {
       toggle_highlight_over => 2
     });
 
+  my @sample_cols;
   foreach my $sample (@$samples) {
     my $sample_label = $sample->name;
        $sample_label =~ s/^MGP://;
-    push (@columns,
+       $sample_label =~ s!/!!g;
+    push (@sample_cols,
     {
       _key    => lc($sample->name).'_strain'  , _type => 'string no_filter no_sort',
       label   => $sample_label,
@@ -216,6 +228,7 @@ sub make_table {
       recolour => { A => 'green', C => 'blue', G => '#ff9000', T => 'red' }
     });
   }
+  push @columns,(sort { $a->{'_key'} cmp $b->{'_key'} } @sample_cols);
 
   $table->add_columns(\@columns,\@exclude);
 

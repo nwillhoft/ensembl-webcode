@@ -31,15 +31,13 @@ use parent qw(EnsEMBL::Web::ImageConfig);
 ##   Multi         => { ... }
 ## }
 
-sub _new {
+sub init_cacheable {
   ## @override
-  my ($class, $hub, $species, $type, $code) = @_;
+  my $self = shift;
 
-  my $self = $class->SUPER::_new($hub, $hub->species, $type, $code);
+  $self->SUPER::init_cacheable(@_);
 
   $self->set_parameter('multi_species', 1);
-
-  return $self;
 }
 
 sub species_list {
@@ -67,6 +65,29 @@ sub get_user_settings {
   my $settings  = $self->SUPER::get_user_settings(@_);
 
   return $settings->{$self->species} ||= {};
+}
+
+sub reset_user_settings {
+  ## override
+  ## Reset user settings from other species too
+  my $self        = shift;
+  my $reset_type  = shift || '';
+  my $all_data    = $self->SUPER::get_user_settings;
+  my @species     = grep $_ ne $self->species, map $_->[0], @{$self->species_list};
+  my @keys        = $reset_type eq 'all' ? qw(nodes track_order) : ($reset_type eq 'track_order' ? ('track_order') : ('nodes'));
+  my @altered;
+
+  # remove other species keys
+  foreach my $species (@species) {
+    for (@keys) {
+      delete $all_data->{$species}{$_};
+      push @altered, 1;
+    }
+  }
+
+  push @altered, $self->SUPER::reset_user_settings($reset_type);
+
+  return @altered;
 }
 
 sub get_user_settings_to_save {

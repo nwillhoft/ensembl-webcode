@@ -63,8 +63,11 @@ sub features {
       my $study_obj = $self->{'config'}->hub->get_adaptor('get_StudyAdaptor', $var_db)->fetch_by_name($study_name);
       $features = $pf_adaptor->fetch_all_by_Slice_Study($slice, $study_obj, undef)    ;
     }
+    elsif($type) {
+      $features = [grep {$_->{_phenotype_id}} @{$pf_adaptor->fetch_all_by_Slice_type($slice, $type)}];
+    }
     else {
-      $features = [grep {$_->{_phenotype_id}} @{$pf_adaptor->fetch_all_by_Slice_type($slice,$type)}];
+      $features = [grep {$_->{_phenotype_id}} @{$pf_adaptor->fetch_all_by_Slice($slice)}];
     }
     
     $self->cache($id, $features);
@@ -130,14 +133,14 @@ sub href {
     my $params = {
       'type'      => $type,
       'action'    => 'Phenotype',
-      'ph'        => $hub->param('ph'),
+      'ph'        => $hub->param('ph') || undef,
       $id_param   => $f->object_id,
       __clear     => 1
     };
-  
+
     $link = $hub->url($params);
   }
-  
+
   return $link;
 }
 

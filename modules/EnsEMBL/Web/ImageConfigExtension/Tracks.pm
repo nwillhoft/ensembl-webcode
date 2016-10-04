@@ -171,7 +171,7 @@ sub _add_matrix {
   my $column_key   = clean_id("${subset}_$column");
   my $column_track = $self->get_node($column_key);
 
-  if (!($column_track && $column_track->parent_node)) {
+  unless ($column_track && $column_track->parent_node) {
     $column_track = $self->create_track_node($column_key, $data->{'track_name'} || $column, {
       renderers   => $data->{'renderers'},
       label_x     => $column,
@@ -1027,7 +1027,7 @@ sub add_regulation_builds {
     labels      => 'on',
     depth       => 0,
     colourset   => 'fg_regulatory_features',
-    display     => 'off',
+    display     => 'normal',
     description => '',
     renderers   => [qw(off Off normal On)],
     caption     => 'Regulatory Build',
@@ -1039,12 +1039,14 @@ sub add_regulation_builds {
   my $adaptor       = $db->get_FeatureTypeAdaptor;
   my $evidence_info = $adaptor->get_regulatory_evidence_info;
 
-  my (@cell_lines,%cell_names);
+  my (@cell_lines, %cell_names, %regbuild);
 
   foreach (keys %{$db_tables->{'cell_type'}{'ids'}||{}}) {
     (my $name = $_) =~ s/:\w+$//;
     push @cell_lines, $name;
     $cell_names{$name} = $db_tables->{'cell_type'}{'names'}{$_}||$name;
+    ## Add to lookup for regulatory build cell lines
+    $regbuild{$name} = 1 if $db_tables->{'cell_type'}{'regbuild_ids'}{$_};
   }
   @cell_lines = sort { $a cmp $b } @cell_lines;
 
@@ -1146,21 +1148,24 @@ sub add_regulation_builds {
     my $label     = ": $cell_line";
     my %evidence_tracks;
 
-    $reg_feats->append_child($self->create_track_node($track_key, "Activity in $cell_names{$cell_line}", {
-      db            => $key,
-      glyphset      => $type,
-      sources       => 'undef',
-      strand        => 'r',
-      depth         => $data->{$key_2}{'depth'}     || 0.5,
-      colourset     => $data->{$key_2}{'colourset'} || $type,
-      description   => "Activity in epigenome $cell_names{$cell_line}",
-      display       => $display,
-      renderers     => \@renderers,
-      cell_line     => $cell_line,
-      section       => $cell_names{$cell_line},
-      section_zmenu => { type => 'regulation', cell_line => $cell_line, _id => "regulation:$cell_line" },
-      caption       => "Regulatory Features",
-    }));
+    ## Only add regulatory features if they're in the main build
+    if ($regbuild{$cell_line}) {
+      $reg_feats->append_child($self->create_track_node($track_key, "Activity in $cell_names{$cell_line}", {
+        db            => $key,
+        glyphset      => $type,
+        sources       => 'undef',
+        strand        => 'r',
+        depth         => $data->{$key_2}{'depth'}     || 0.5,
+        colourset     => $data->{$key_2}{'colourset'} || $type,
+        description   => "Activity in epigenome $cell_names{$cell_line}",
+        display       => $display,
+        renderers     => \@renderers,
+        cell_line     => $cell_line,
+        section       => $cell_names{$cell_line},
+        section_zmenu => { type => 'regulation', cell_line => $cell_line, _id => "regulation:$cell_line" },
+        caption       => "Regulatory Features",
+      }));
+    }
 
     my %column_data = (
       db        => $key,

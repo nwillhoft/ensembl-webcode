@@ -326,6 +326,15 @@ sub MARKUP_OPTIONS {
       'label'    => 'Filter variants by consequence type',
       'values'   => [{ 'value' => 'off', 'caption' => 'No filter' }]
     },
+    'hidden_sources' => {
+      'type'     => 'DropDown',
+      'multiple' => 1,
+      'size'     => 5,
+      'select'   => 'select',
+      'name'     => 'hidden_sources',
+      'label'    => 'Hide individual variant sources',
+      'values'   => [{ value => '_all', caption => 'No filter' }],
+    },
     'hide_long_snps' => {
       'type'   => 'Checkbox', 
       'select' => 'select',

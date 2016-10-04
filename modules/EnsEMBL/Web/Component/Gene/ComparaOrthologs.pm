@@ -38,7 +38,7 @@ sub _species_sets {}
 sub _get_all_analysed_species {
   my ($self, $cdb) = @_;
   $self->{"_mlss_adaptor_$cdb"} ||= $self->hub->get_adaptor('get_MethodLinkSpeciesSetAdaptor', $cdb);
-  my $self->{'_all_analysed_species'} ||= {map {ucfirst($_->name) => 1} @{$self->{"_mlss_adaptor_$cdb"}->fetch_all_by_method_link_type('PROTEIN_TREES')->[0]->species_set_obj->genome_dbs}};
+  my $self->{'_all_analysed_species'} ||= {map {ucfirst($_->name) => 1} @{$self->{"_mlss_adaptor_$cdb"}->fetch_all_by_method_link_type('PROTEIN_TREES')->[0]->species_set->genome_dbs}};
   return %{$self->{'_all_analysed_species'}};
 }
 
@@ -135,14 +135,14 @@ sub content {
   
   $columns = [
     { key => 'Species',    align => 'left', width => '10%', sort => 'html'                                                },
-    { key => 'Type',       align => 'left', width => '10%', sort => 'string'                                            },   
+    { key => 'Type',       align => 'left', width => '10%', sort => 'html'                                            },   
     { key => 'identifier', align => 'left', width => '15%', sort => 'none', title => 'Orthologue'},      
-    { key => 'dN/dS',      align => 'left', width => '5%',  sort => 'numeric'                                             },
-    { key => 'Target %id', align => 'left', width => '5%',  sort => 'numeric', label => 'Target %id', help => "Percentage of the orthologous sequence matching the $species_name sequence" },
-    { key => 'Query %id',  align => 'left', width => '5%',  sort => 'numeric', label => 'Query %id',  help => "Percentage of the $species_name sequence matching the sequence of the orthologue" },
-    { key => 'goc_score',  align => 'left', width => '5%',  sort => 'html', label => 'GOC Score',  help => "Gene Order Conservation Score (values are 0-100)" },
-    { key => 'wgac',  align => 'left', width => '5%',  sort => 'html', label => 'WGA Coverage',  help => "Whole Genome Alignment Coverage (values are 0-100)" },
-    { key => 'confidence',  align => 'left', width => '5%',  sort => 'html', label => 'High Confidence'},
+    { key => 'dN/dS',      align => 'left', width => '5%',  sort => 'html'                                             },
+    { key => 'Target %id', align => 'left', width => '5%',  sort => 'position_html', label => 'Target %id', help => "Percentage of the orthologous sequence matching the $species_name sequence" },
+    { key => 'Query %id',  align => 'left', width => '5%',  sort => 'position_html', label => 'Query %id',  help => "Percentage of the $species_name sequence matching the sequence of the orthologue" },
+    { key => 'goc_score',  align => 'left', width => '5%',  sort => 'position_html', label => 'GOC Score',  help => "<a href='/info/genome/compara/Ortholog_qc_manual.html/#goc'>Gene Order Conservation Score (values are 0-100)</a>" },
+    { key => 'wgac',  align => 'left', width => '5%',  sort => 'position_html', label => 'WGA Coverage',  help => "<a href='/info/genome/compara/Ortholog_qc_manual.html/#wga'>Whole Genome Alignment Coverage (values are 0-100)</a>" },
+    { key => 'confidence',  align => 'left', width => '5%',  sort => 'html', label => 'High Confidence', help => "<a href='/info/genome/compara/Ortholog_qc_manual.html/#hc'>Homology with high %identity and high GOC score or WGA coverage (as available), Yes or No.</a>"},
   ];
   
   push @$columns, { key => 'Gene name(Xref)',  align => 'left', width => '15%', sort => 'html', title => 'Gene name(Xref)'} if(!$self->html_format);
