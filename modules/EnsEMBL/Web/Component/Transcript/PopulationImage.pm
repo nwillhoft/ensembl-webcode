@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,6 +36,17 @@ sub content {
   my $object    = $self->object || $self->hub->core_object('transcript');
   my $stable_id = $object->stable_id;
   my $extent    = $object->extent;
+  
+  # set up VCF if needed
+  my $vdb           = $object->Obj->adaptor->db->get_db_adaptor('variation');
+  my $species_defs  = $self->hub->species_defs;
+  my $collections   = $species_defs->ENSEMBL_VCF_COLLECTIONS;
+
+  if($collections && $vdb->can('use_vcf')) {
+    $vdb->vcf_config_file($collections->{'CONFIG'});
+    $vdb->vcf_root_dir($species_defs->DATAFILE_BASE_PATH);
+    $vdb->use_vcf($collections->{'ENABLED'});
+  }
   
   # Get two slices -  gene (4/3x) transcripts (+-EXTENT)
   foreach my $slice_type (
@@ -76,7 +88,7 @@ sub content {
   my $context     = $hub->param('context') || 100;
 
   foreach (qw(transcript transcripts_bottom transcripts_top)) {
-    $configs->{$_} = $hub->get_imageconfig('transcript_population', $_);
+    $configs->{$_} = $hub->get_imageconfig({type => 'transcript_population', cache_code => $_});
     $configs->{$_}->set_parameters({
       image_width  => $image_width, 
       slice_number => '1|1',
@@ -99,7 +111,7 @@ sub content {
     $configs->{$_}->set_parameters({ container_width => $fake_length });
   }
 
-  $configs->{'snps'} = $hub->get_imageconfig('gene_variation', 'snps');
+  $configs->{'snps'} = $hub->get_imageconfig({type => 'gene_variation', cache_code => 'snps'});
   $configs->{'snps'}->set_parameters({
     image_width     => $image_width,
     container_width => 100,
@@ -195,7 +207,7 @@ sub sample_configs {
     next unless $sample_slice; 
     
     ## Initialize content
-    my $sample_config = $hub->get_imageconfig('transcript_population', $sample);
+    my $sample_config = $hub->get_imageconfig({type => 'transcript_population', cache_code => $sample});
     $sample_config->init_sample_transcript;
     $sample_config->{'id'}         = $stable_id;
     $sample_config->{'subslices'}  = $sub_slices;
@@ -250,7 +262,6 @@ sub sample_configs {
 
     $sample_config->{'_add_labels'} = 1;
     $sample_config->set_parameters({ container_width => $fake_length });
-    $sample_config->tree->dump('Transcript configuration', '([[caption]])') if $hub->species_defs->ENSEMBL_DEBUG_FLAGS & $hub->species_defs->ENSEMBL_DEBUG_TREE_DUMPS;
     
     push @containers_and_configs, $sample_slice, $sample_config;
   }

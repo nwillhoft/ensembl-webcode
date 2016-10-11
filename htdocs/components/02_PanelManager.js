@@ -1,5 +1,6 @@
 /*
- * Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+ * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+ * Copyright [2016] EMBL-European Bioinformatics Institute
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -119,6 +120,8 @@ Ensembl.PanelManager.extend({
    * Adds a panel's html to the page, or triggers an event and brings the panel to the front if it already exists
    */
   addPanel: function (id, type, html, container, params, event) {
+    var highlighted = false;
+        
     if (this.panels[id] && event) {
       Ensembl.EventManager.triggerSpecific(event, id, params);
       this.panelToFront(id);
@@ -148,16 +151,16 @@ Ensembl.PanelManager.extend({
     if (this.panels[id]) {
       this.destroyPanel(id, 'cleanup');
     }
-    
     if (type) {
       this.panels[id] = new Ensembl.Panel[type](id, params);
     } else {
       this.panels[id] = new Ensembl.Panel(id, params);
     }
-    
+
     this.panels[id].panelNumber = this.panelNumber++;
     this.panels[id].panelType   = type;
     this.panels[id].init();
+    return this.panels[id];
   },
   
   /**

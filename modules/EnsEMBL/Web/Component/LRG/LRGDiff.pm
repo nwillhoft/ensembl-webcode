@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,7 +45,7 @@ sub content {
   my $lrg  = $self->object->Obj;
   my $lrg_feature_slice = $lrg->feature_Slice;
   my $slice_adaptor = $hub->get_adaptor('get_SliceAdaptor');
-  my $vf_adaptor = $hub->database('variation')->get_VariationAdaptor; 
+  my $vf_adaptor = $hub->database('variation')->get_VariationFeatureAdaptor; 
   my $html;
   
   my $columns = [

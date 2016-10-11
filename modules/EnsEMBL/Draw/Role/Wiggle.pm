@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,15 +19,50 @@ limitations under the License.
 
 package EnsEMBL::Draw::Role::Wiggle;
 
+use strict;
+use warnings;
+no warnings 'uninitialized';
+
 ### Role for tracks that draw data as a continuous line 
 
 use Role::Tiny;
+
+sub render_compact {
+  my $self = shift;
+  $self->{'my_config'}->set('drawing_style', ['Graph::Barcode']);
+  $self->{'my_config'}->set('height', 8);
+  $self->{'my_config'}->set('no_axis', 1);
+  $self->_render_aggregate;
+}
+
+sub render_signal {
+  my $self = shift;
+  $self->{'my_config'}->set('drawing_style', ['Graph::Bar']);
+  $self->{'my_config'}->set('height', 60);
+  $self->_render_aggregate;
+}
 
 sub render_feature_with_signal { 
   my $self = shift;
   my $graph_class = $self->_select_graph_type;
   $self->{'my_config'}->set('drawing_style', [$graph_class, 'Feature']);
   $self->_render; 
+}
+
+sub render_gradient {
+### Features coloured on a gradient by score, e.g. pvalues
+  my $self = shift;
+  $self->{'my_config'}->set('drawing_style', ['Graph::Heatmap']);
+  $self->{'my_config'}->set('height', 8);
+  $self->{'my_config'}->set('no_axis', 1);
+  $self->{'my_config'}->set('use_pvalue', 1);
+  $self->_render_aggregate;
+}
+
+sub render_tiling {
+  ## For backwards compatibility - because 'tiling' is a meaningless name!
+  my $self = shift;
+  $self->render_signal;
 }
 
 sub _select_graph_type {
@@ -114,7 +150,7 @@ sub _render {
   }
 
   foreach (@$tracks) {
-    next unless scalar(@{$_->{'features'}{$self->strand}||[]});
+    next unless scalar(@{$_->{'features'}||[]});
     ## Work out maximum and minimum scores
     my $track_min = $self->{'my_config'}->get('min_score');
     my $track_max = $self->{'my_config'}->get('max_score');
@@ -141,7 +177,7 @@ sub _render {
 sub _get_min_max {
 ### Get minimum and maximum scores for a set of features
   my ($self, $dataset) = @_;
-  my $features = $dataset->{'features'}{$self->strand} || [];
+  my $features = $dataset->{'features'} || [];
   return unless scalar @$features;
   my $metadata = $dataset->{'metadata'} || {};
   my ($min, $max) = (0, 0);
@@ -151,9 +187,10 @@ sub _get_min_max {
   }
   else {
     foreach (@$features) {
-      next unless $_->{'score'};
-      $min = $_->{'score'} if !$min || $_->{'score'} < $min;
-      $max = $_->{'score'} if !$max || $_->{'score'} > $max;
+      my $score = ref $_ eq 'HASH' ? $_->{'score'} : $_;
+      next unless $score;
+      $min = $score if !$min || $score < $min;
+      $max = $score if !$max || $score > $max;
     }
   }
   return ($min, $max);

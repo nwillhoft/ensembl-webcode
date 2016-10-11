@@ -1,5 +1,6 @@
 /*
- * Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+ * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+ * Copyright [2016] EMBL-European Bioinformatics Institute
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,15 +19,23 @@ Ensembl.Panel.DataExport = Ensembl.Panel.extend({
 
   init: function () {
     var panel = this;
-
     this.base();
 
-    this.elLk.form      = this.el.find('form').first();
-    this.elLk.images    = this.elLk.form.find('div._export_formats div').on('click',  function() { panel.selectOption(this.firstChild.innerHTML); });
-    this.elLk.dropdown  = this.elLk.form.find('select._export_formats').on('change',  function() { panel.selectOption(this.value, true); });
-    this.elLk.cSwitch   = this.elLk.form.find('input[name=compression]').on('change', function() { panel.resetButtonVal(); });
+    this.elLk.form        = this.el.find('form').first();
+    this.elLk.images      = this.elLk.form.find('div._export_formats div').on('click',  function() { panel.selectOption(this.firstChild.innerHTML); });
+    this.elLk.dropdown    = this.elLk.form.find('select._export_formats').on('change',  function() { panel.selectOption(this.value, true); });
+    this.elLk.compression = this.elLk.form.find('input[name="compression"]');
+    this.elLk.buttons     = this.elLk.form.find('input.export_buttons');
 
-    this.resetButtonVal();
+    this.elLk.buttons.on('click', function() {
+      if(panel.elLk.dropdown.val() !== '') {
+        panel.elLk.compression.val(this.name);
+        panel.elLk.form.trigger('submit');
+      }
+    });
+
+    // Highlight previosly selected option when users come back from preview
+    this.elLk.dropdown.trigger('change');
   },
 
   selectOption: function(val, dropdown) {
@@ -35,12 +44,15 @@ Ensembl.Panel.DataExport = Ensembl.Panel.extend({
       this.elLk.dropdown.find('option[value=' + val + ']').prop('selected', true).end().selectToToggle('trigger');
     }
 
-    this.resetButtonVal();
-  },
+    // Enable/disable download buttons
+    this.elLk.buttons.toggleClass('disabled', val === '').prop('disabled', val === '');
 
-  resetButtonVal: function() {
-    this.elLk.form.find('input[type=submit]').val(this.elLk.cSwitch.filter(':checked').val() || this.elLk.dropdown.find('option:selected').val() === 'RTF' ? 'Download' : 'Preview');
+    // Disable preview for RTF
+    if (val === 'RTF') {
+      this.elLk.buttons.filter('[name=preview]').prop('disabled', true).addClass('disabled');
+    }
   }
+
 });
 
 Ensembl.Panel.DataExport_ImageTracks = Ensembl.Panel.extend({

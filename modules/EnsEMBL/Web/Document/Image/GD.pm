@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,11 +37,9 @@ use Bio::EnsEMBL::IO::Writer;
 use parent qw(EnsEMBL::Web::Document::Image);
 
 sub new {
-  my ($class, $hub, $component, $image_configs) = @_;
+  my ($class, $hub, $component, $image_configs, $args) = @_;
 
-  my $self = {
-    hub                => $hub,
-    component          => $component,
+  $args = {
     image_configs      => $image_configs || [],
     drawable_container => undef,
     centred            => 0,
@@ -54,15 +53,14 @@ sub new {
     button_name        => undef,
     button_id          => undef,
     format             => 'png',
+    %{$args || {}}
   };
 
   if ($image_configs) {
-    $self->{'toolbars'}{$_} = $image_configs->[0]->toolbars->{$_} for qw(top bottom);
+    $args->{'toolbars'}{$_} = $image_configs->[0]->get_parameter($_.'_toolbar') for qw(top bottom);
   }
 
-  bless $self, $class;
-
-  return $self;
+  return $class->SUPER::new($hub, $component, $args);
 }
 
 sub drawable_container :lvalue { $_[0]->{'drawable_container'}; }
@@ -82,12 +80,13 @@ sub karyotype {
   my $chr_name;
 
   my $image_config = $hub->get_imageconfig($config_name);
+  my $component = $self->component;
   
   # set some dimensions based on number and size of chromosomes
   if ($image_config->get_parameter('all_chromosomes') eq 'yes') {
     my $total_chrs = @{$hub->species_defs->ENSEMBL_CHROMOSOMES};
-    my $rows       = $hub->param('rows') || ceil($total_chrs / 18);
-    my $chr_length = $hub->param('chr_length') || 200;
+    my $rows       = $component->param('rows') || ceil($total_chrs / 18);
+    my $chr_length = $component->param('chr_length') || 200;
        $chr_name   = 'ALL';
 
     if ($chr_length) {
@@ -322,10 +321,11 @@ sub hover_labels {
 
     $html .= sprintf(qq(
       <div class="hover_label floating_popup %s">
-        <p class="header _hl_pin"><span class="hl-pin"></span>%s<span class="_hl_extend hl-extend"></span></p>
+        <p class="header _hl_pin"><span class="hl-pin"></span><span class="_track_menu_header">%s</span><span class="_hl_extend hl-extend"></span></p>
         <div class="hl-buttons">%s</div>
         <div class="hl-content">%s</div>
         <div class="spinner"></div>
+        <span class="close"></span>
       </div>),
       $label->{'class'},
       $label->{'header'},
@@ -346,6 +346,7 @@ sub hover_label_tabs {
      $desc   .= $label->{'extra_desc'};
   my $subset  = $label->{'subset'};
   my $renderers;
+  my $highlight = ($self->hub->type =~m/Location|Gene/ && $self->hub->action =~/Multi|Variation_Gene/) ? 0 : 1;
 
   foreach (@{$label->{'renderers'}}) {
 
@@ -390,6 +391,11 @@ sub hover_label_tabs {
     push @contents, qq(<div class="_hl_tab hl-tab"><p>Click on the cross to turn the track off</p></div>);
   }
 
+  if ($highlight) {
+    push @buttons, qq(<div class="_hl_icon hl-icon"><a class="hl-icon-highlight" data-highlight-track="$label->{'highlight'}"></a></div>);
+    push @contents, qq(<div class="_hl_tab hl-tab"><p>Click to highlight/unhighlight this track</p></div>);
+  }
+
   return (\@buttons, \@contents);
 }
 
@@ -399,19 +405,16 @@ sub track_boundaries {
   my $config          = $container->{'config'};
   my $spacing         = $config->get_parameter('spacing');
   my $top             = $config->get_parameter('margin') * 2 - $spacing;
-  my @sortable_tracks = grep { $_->get('display') ne 'off' } $config->get_sortable_tracks;
+  my @sortable_tracks = $config->get_sortable_tracks(1);
   my %track_ids       = map  { $_->id => 1 } @sortable_tracks;
   my %strand_map      = ( f => 1, r => -1 );
   my @boundaries;
- 
   my $prev_section; 
   foreach my $glyphset (@{$container->{'glyphsets'}}) {
     next unless scalar @{$glyphset->{'glyphs'}};
-
     my $height = $glyphset->height + $spacing;
     my $type   = $glyphset->type;
     my $node;  
-    
     my $collapse = 0;
       
     if ($track_ids{$type}) {
@@ -446,14 +449,31 @@ sub moveable_tracks {
   my $url     = $image->read_url;
   my ($top, $html);
   
+  # Get latest uploaded user data to add highlight class
+  my $last_uploaded_user_data_code = {};
+  my $userdata_upload_codes = $self->hub->session->records({'type' => 'userdata_upload_code'});
+
+  for (@{$userdata_upload_codes}) {
+    $last_uploaded_user_data_code->{$_->{'upload_code'}} = 1;
+  }
+
+  # Purge this data so that it doesn't highlight second time.
+  $userdata_upload_codes->delete;
+
   foreach (@{$self->track_boundaries}) {
     my ($t, $h, $type, $strand) = @$_;
 
+    # For highlight, upload_ and url_ prefixes are not there in the session data.
+    # So split remove and then compare
+    my ($record_type, $code) = split(/_/,$type, 2);
+    my $highlight = $last_uploaded_user_data_code->{$code} || 0;
+
     $html .= sprintf(
-      '<li class="%s%s" style="height:%spx;background:url(%s) 0 %spx%s">
+      '<li class="%s %s %s" style="height:%spx;background:url(%s) 0 %spx%s">
         <div class="handle" style="height:%spx"%s><p></p></div>
       </li>',
-      $type, $strand ? " $strand" : '',
+      $type, $strand ? "$strand" : '',
+      $highlight ? '_new_userdata usertrack_highlight' : '',
       $h, $url, 3 - $t,
       $h == 0 ? ';display:none' : '',
       $h - 1,
@@ -495,8 +515,8 @@ sub render {
 
   my $result = $image->write($content);
 
-  if (!$result->{'success'}) {
-    throw exception('WebException', $result->{'error'} && $result->{'error'}[0] || 'Unable to write image file');
+  if (!$result || !$result->{'success'}) {
+    throw exception('WebException', $result && $result->{'error'} && $result->{'error'}[0] || 'Unable to write image file');
   }
 
   if ($filename || ($hub->param('submit') && $hub->param('submit') eq 'Download' && !$filename)) {
@@ -606,7 +626,6 @@ sub render {
   }
   
   $self->{'width'} = $image->width;
-  $self->hub->species_defs->timer_push('Image->render ending', undef, 'draw');
   
   return $html;
 }

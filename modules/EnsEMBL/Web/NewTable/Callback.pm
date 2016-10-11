@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -104,7 +105,9 @@ sub convert_to_csv {
   my @headings;
   foreach my $key (@{$convert->series}) {
     my $col = $self->{'config'}->column($key);
-    push @headings,$col->get_label();
+    my $label = $col->get_label();
+    $label =~ s/[\000-\037]//g;
+    push @headings,$label;
   }
   $csv->combine(@headings);
   $out .= $csv->string()."\n";
@@ -180,6 +183,9 @@ sub newtable_data_request {
   # Check if we need to request all rows due to sorting
   my $all_data = 0;
   if($self->{'wire'}{'sort'} and @{$self->{'wire'}{'sort'}}) {
+    $all_data = 1;
+  }
+  if($self->{'wire'}{'format'} eq 'export') {
     $all_data = 1;
   }
  

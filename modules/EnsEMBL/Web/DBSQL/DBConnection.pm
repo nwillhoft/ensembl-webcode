@@ -1,3 +1,22 @@
+=head1 LICENSE
+
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+=cut
+
 package EnsEMBL::Web::DBSQL::DBConnection;
 
 =head1 NAME
@@ -19,31 +38,14 @@ Module to initiate and store database connections for web api
  the 'get_DBAdaptor' call. New databases can be added to the object with
  different species specified.
 
-=head1 LICENSE
-
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-=head1 CONTACT
-
-Brian Gibbins - bg2@sanger.ac.uk
-
 =cut
+
+package EnsEMBL::Web::DBSQL::DBConnection;
 
 use strict;
 use warnings;
 no warnings 'uninitialized';
+
 use DBI;
 use Carp;
 
@@ -156,7 +158,7 @@ sub get_DBAdaptor {
 
 sub get_databases {
   my $self = shift;
-  return $self->get_databases_species($ENV{'ENSEMBL_SPECIES'}, @_);
+  return $self->get_databases_species($self->default_species, @_);
 }
 
 =head2 get_databases_species
@@ -351,24 +353,6 @@ sub _get_db_with_dnadb {
   }
 }
 
-=head2 _get_userupload_database
-
- Arg[1]      : String  
-                Species name
- 
- Example     : $self->_get_userupload_database($species)
- Description : Gets est database connection
- Return type : Bio::EnsEMBL::DBSQL::DBAdaptor
-
-=cut
-
-sub _get_userdata_database{
-    my $self = shift;
-    my $db_info =  $self->_get_database_info( shift, 'DATABASE_USERDATA' ) ||
-        die( "No est database for this species" );
-    return  $self->_get_database( $db_info, 'Bio::EnsEMBL::DBSQL::DBAdaptor' ); 
-}
-
 =head2 _get_compara_database
 
  Arg[1]      : none
@@ -433,7 +417,7 @@ sub _get_go_database{
 
 sub _get_database_info{
   my $self = shift;
-  my $species  = shift || $ENV{ENSEMBL_SPECIES};
+  my $species  = shift;
   my $conf_key = shift || die( "Need a DB conf key" );
   my $conf = $self->{'species_defs'}->get_config( $species, 'databases' ) || return undef();
   return $conf->{$conf_key} || undef();

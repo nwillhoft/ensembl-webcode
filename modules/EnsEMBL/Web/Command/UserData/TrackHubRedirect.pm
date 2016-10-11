@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,6 +22,7 @@ package EnsEMBL::Web::Command::UserData::TrackHubRedirect;
 use strict;
 
 use EnsEMBL::Web::File::AttachedFormat::TRACKHUB;
+use EnsEMBL::Web::Utils::UserData qw(check_attachment);
 use EnsEMBL::Web::Constants;
 
 use base qw(EnsEMBL::Web::Command::UserData);
@@ -55,7 +57,7 @@ sub process {
   if ($species) {
     if ($url) {
       my $new_action  = '';
-      ($new_action, $params)  = $self->check_attachment($url);
+      ($new_action, $params)  = check_attachment($hub, $url);
 
       if ($new_action) {
         ## Hub is already attached, so just go there
@@ -100,17 +102,17 @@ sub process {
           my $key       = sprintf('hub_%s', $p);
 
           if ($messages{$key}) {
-            ## Open control panel at Manage Your Data if chosen species not supported
+            ## Open control panel at Custom tracks if chosen species not supported
             if ($params->{'species_flag'} && $params->{'species_flag'} eq 'other_only') {
               $anchor = 'modal_user_data';
             }
             else {
-              $hub->session->add_data(
+              $hub->session->set_record_data({
                 type     => 'message',
                 code     => 'AttachURL',
                 message  => $messages{$key}{'message'},
                 function => '_'.$messages{$key}{'type'},
-              );
+              });
             }
           }
         }

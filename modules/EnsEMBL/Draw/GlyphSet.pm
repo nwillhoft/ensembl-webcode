@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -101,7 +102,7 @@ sub species            { return $_[0]->{'config'}{'species'} || $_[0]->{'contain
 sub species_defs       { return $_[0]->{'config'}->species_defs;                                                                                                 }
 sub get_parameter      { return $_[0]->{'config'}->get_parameter($_[1]);                                                                                         }
 sub core               { return $_[0]->{'config'}->hub->core_params->{$_[1]};                                                                                    }
-sub scalex             { return $_[0]->{'config'}->transform->{'scalex'};                                                                                        }
+sub scalex             { return $_[0]->{'config'}->transform_object->scalex;                                                                                     }
 sub error_track_name   { return $_[0]->my_config('caption');                                                                                                     }
 sub get_features       { return $_[0]->{'features'}; }
 
@@ -134,7 +135,6 @@ sub _quick_url         {
 }
 
 sub image_width        { return $_[0]->{'config'}->get_parameter('panel_width') || $_[0]->{'config'}->image_width;                                               }
-sub timer_push         { return shift->{'config'}->species_defs->timer->push(shift, shift || 3, shift || 'draw');                                                }
 sub dbadaptor          { shift; return Bio::EnsEMBL::Registry->get_DBAdaptor(@_);                                                                                }
 sub x {
   my ($self) = @_;
@@ -198,12 +198,13 @@ sub push {
   my ($gx, $gx1, $gy, $gy1);
 
   foreach my $Glyph (@_) {
-      CORE::push @{$self->{'glyphs'}}, $Glyph;
+    next unless $Glyph;
+    CORE::push @{$self->{'glyphs'}}, $Glyph;
 
-      $gx  =     $Glyph->x() || 0;
-      $gx1 = $gx + ($Glyph->width() || 0);
+    $gx  =     $Glyph->x() || 0;
+    $gx1 = $gx + ($Glyph->width() || 0);
     $gy  =     $Glyph->y() || 0;
-      $gy1 = $gy + ($Glyph->height() || 0);
+    $gy1 = $gy + ($Glyph->height() || 0);
 
   ######### track max and min dimensions
     $self->minx($gx)  unless defined $self->minx && $self->minx < $gx;
@@ -273,7 +274,6 @@ sub init { return []; } ## New method used by refactored glyphsets
 
 sub features {
   my $self = shift;
-  warn ">>>> DEPRECATED METHOD 'features' CALLED BY $self - please use 'get_data' instead.";
   return $self->get_data(@_);
 }
 
@@ -302,9 +302,9 @@ sub length {
 
 sub transform {
   my ($self) = @_;
-  my $T = $self->{'config'}->{'transform'};
+  my $transform_obj = $self->{'config'}->transform_object;
   foreach( @{$self->{'glyphs'}} ) {
-    $_->transform($T);
+    $_->transform($transform_obj);
   }
 }
 
@@ -554,8 +554,8 @@ sub init_label {
   
   return $self->label(undef) if defined $self->{'config'}->{'_no_label'};
   
-  my $text = $self->my_config('caption');
-  
+  my $text = $self->my_config('caption'); 
+
   my $img = $self->my_config('caption_img');
   $img = undef if $SiteDefs::ENSEMBL_NO_LEGEND_IMAGES;
   if($img and $img =~ s/^r:// and $self->{'strand'} ==  1) { $img = undef; }
@@ -574,13 +574,13 @@ sub init_label {
   my $track     = $self->type;
   my $node      = $config->get_node($track);
   my $component = $config->get_parameter('component');
-  my $hover     = $component && !$hub->param('export') && $node->get('menu') ne 'no';
+  my $hover     = ($text =~m/Legend/)? 0 : $component && !$hub->param('export') && $node->get('menu') ne 'no';
   my $class     = random_string(8);
   ## Store this where the glyphset can find it later...
   $self->{'hover_label_class'} = $class;
 
   if ($hover) {
-    my $fav       = $config->get_favourite_tracks->{$track};
+    my $fav       = $config->is_track_favourite($track);
     my @renderers = grep !/default/i, @{$node->get('renderers') || []};
     my $subset    = $node->get('subset');
     my @r;
@@ -601,8 +601,9 @@ sub init_label {
     $config->{'hover_labels'}->{$class} = {
       header    => $name,
       desc      => $desc,
-      class     => "$class $track",
-      component => lc($component . ($config->multi_species && $config->species ne $hub->species ? '_' . $config->species : '')),
+      class     => "$class $track _track_$track",
+      highlight => $track,
+      component => lc($component . ($config->get_parameter('multi_species') && $config->species ne $hub->species ? '_' . $config->species : '')),
       renderers => \@r,
       fav       => [ $fav, "$url;$track=favourite_" ],
       off       => "$url;$track=off",
@@ -752,13 +753,24 @@ sub recast_label {
     hover     => $self->label->{'hover'},
   });
 
-  my $y = 0;
+  my $make_level = $self->use_subtitles ? 1 : 0; ## Adjust position if track has an in-image label
+  my $y = $make_level ? 5 : 0;
   my $h = $self->my_config('caption_height') || $self->label->{'height'};
+  my $count = 0;
+
   foreach my $row_data (@$rows) {
     my ($row_text,$row_width) = @$row_data;
     next unless $row_text;
     my $pad = 0;
-    $pad = 4 if !$y and @$rows>1;
+    # Add some extra delimiting margin for the next row (if any)
+    if ($make_level) {
+      if ($count > 0) {
+        $pad = 4;
+      }
+    }
+    else {
+      $y = 1 if !$count and @$rows > 1;
+    }
     my $row = $self->Text({
       font => $font,
       ptsize => $ptsize,
@@ -770,7 +782,8 @@ sub recast_label {
       halign => 'left',
     });
     $composite->push($row);
-    $y += $h + $pad; # The 4 is to add some extra delimiting margin
+    $y += $h + $pad; 
+    $count++;
   }
   $self->label($composite);
 }
@@ -1214,7 +1227,7 @@ sub errorTrack {
     absolutey     => 1,
     absolutex     => 1,
     absolutewidth => 1,
-    pixperbp      => $self->{'config'}->{'transform'}->{'scalex'},
+    pixperbp      => $self->{'config'}->transform_object->scalex,
     %font
   }));
 
@@ -1348,8 +1361,9 @@ sub text_bounds {
 # This helps when, eg, we will later bump labels elsewhere, eg in the
 # gene renderer.
 sub mr_bump {
-  my ($self,$features,$show_label,$max,$strand) = @_;
+  my ($self,$features,$show_label,$max,$strand,$moat) = @_;
 
+  $moat ||= 0;
   my $pixperbp = $self->{'pix_per_bp'} || $self->scalex;
   foreach my $f (@$features) {
     my ($start,$end) = ($f->{'start'},$f->{'start'});
@@ -1368,8 +1382,8 @@ sub mr_bump {
         $end -= $overlap;
       }
     }
-    $f->{'_bstart'} = max(0,$start);
-    $f->{'_bend'} = min($end,$max);
+    $f->{'_bstart'} = max(0,$start-$moat/$pixperbp);
+    $f->{'_bend'} = min($end+$moat/$pixperbp,$max);
     if($strand and $f->{'strand'} and $strand != $f->{'strand'}) {
       $f->{'_bskip'} = 1;
     }

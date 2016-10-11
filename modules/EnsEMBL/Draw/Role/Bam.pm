@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,6 +33,8 @@ use Role::Tiny;
 
 use Bio::EnsEMBL::DBSQL::DataFileAdaptor;
 use Bio::EnsEMBL::IO::Adaptor::HTSAdaptor;
+use EnsEMBL::Web::File::Utils::IO qw(file_exists);
+use EnsEMBL::Web::Constants;
 
 sub my_empty_label {
   return 'No data found for this region';
@@ -96,7 +99,7 @@ sub _render_coverage {
   my $consensus;
   if ($pix_per_bp > 1) {
     $consensus = $self->consensus_features;
-    $self->{'my_config'}->set('label_overlay', 1);
+    $self->{'my_config'}->set('overlay_label', 1);
     $self->{'my_config'}->set('hide_subtitle', 1);
   }
   elsif ($pix_per_bp < 1) {
@@ -112,7 +115,6 @@ sub _render_coverage {
   }
 
   ## Munge into a format suitable for the Style module
-  my $default_strand = $self->{'my_config'}->get('default_strand');
   my $name = $self->{'my_config'}->get('short_name') || $self->{'my_config'}->get('name');
   my $data = {'features' => [], 
               'metadata' => {
@@ -192,9 +194,8 @@ sub _render_reads {
   my $read_colour = $self->my_colour('read');
   $self->{'my_config'}->set('insert_colour', $self->my_colour('read_insert'));
 
-  my $all_features    = $self->get_data->[0]{'features'};
-  my $default_strand  = $self->{'my_config'}->get('default_strand');
-  my $fs = [ map { $_->[1] } sort { $a->[0] <=> $b->[0] } map { [$_->start, $_] } @{$all_features->{$default_strand}} ];
+  my $fs = [ map { $_->[1] } sort { $a->[0] <=> $b->[0] } map { [$_->start, $_] } 
+            @{$self->get_data->[0]{'features'}} ];
 
   my $features = pre_filter_depth($fs, $max_depth, $pix_per_bp, $slice->start, $slice->end);
   $features = [reverse @$features] if $slice->strand == -1;
@@ -206,31 +207,31 @@ sub _render_reads {
 
   ## Now set some positioning
   my $y_start = $self->{'my_config'}->get('height');
-  $y_start += $text_fits ? -10 : 2;
+  $y_start += $text_fits ? 10 : 2;
   $self->{'my_config'}->set('y_start', $y_start);
   $self->{'my_config'}->set('height', 1);
   $self->{'my_config'}->set('bumped', 1);
   $self->{'my_config'}->set('vspacing', 0);
-  $self->{'my_config'}->set('y_start', 35);
 
   my $total_count = scalar @$fs;
   my $drawn_count = scalar @$features;
   my $data = {'features' => [], 'metadata' => {'not_drawn' => $total_count - $drawn_count}};
 
   foreach my $f (@$features) {
-    my $fstart = $f->start;
-    my $fend = $f->end;
+    my $fstart  = $f->start;
+    my $fend    = $f->end;
+    my $strand  = $f->reversed ? -1 : 1;
 
-    next unless $fstart and $fend;
-
+    next unless $fstart and $fend and $strand == $self->strand;
     ## Munge coordinates
-    my $start = $slicestrand == -1 ? $sliceend - $fend   + 1 : $fstart - $slicestart;
-    my $end   = $slicestrand == -1 ? $sliceend - $fstart + 1 : $fend   - $slicestart;
+    my $start  = $slicestrand == -1 ? $sliceend - $fend   + 1 : $fstart - $slicestart;
+    my $end    = $slicestrand == -1 ? $sliceend - $fstart + 1 : $fend   - $slicestart;
 
     ## Build the feature hash  
     my $fhash = {
                 'start'     => $start,
                 'end'       => $end + 1,
+                'strand'    => $strand,
                 'colour'    => $read_colour,
                 'title'     => $self->_feature_title($f),
                 'arrow'     => {},
@@ -239,7 +240,7 @@ sub _render_reads {
     };
 
     ## Work out details of arrow, if any
-    if (($f->reversed and $fstart >= $slicestart) or (!$f->reversed and $fend <= $sliceend)) {
+    if (($strand == -1 and $fstart >= $slicestart) or ($strand == 1 and $fend <= $sliceend)) {
       $fhash->{'arrow'}{'colour'}     = $self->my_colour('type_' . $self->_read_type($f));
       $fhash->{'arrow'}{'position'}   = $f->reversed ^ ($slicestrand == -1) ? 'start' : 'end';
     }
@@ -291,8 +292,6 @@ sub _render {
 ### Wrapper around the individual subtrack renderers, with lots of
 ### error/timeout handling to cope with the large size of BAM files
   my ($self, $options) = @_;
-  my $default_strand = $options->{'default_strand'} || 1;
-  $self->{'my_config'}->set('default_strand', $default_strand);
 
   ## check threshold
   my $slice = $self->{'container'};
@@ -310,8 +309,11 @@ sub _render {
   eval {
     local $SIG{ALRM} = sub { die "alarm\n" }; # NB: \n required
     alarm $timeout;
-    # render
-    my $features = $self->get_data->[0]{'features'}{$default_strand};
+    ## Creating the adaptor checks if the file exists
+    my $adaptor = $self->bam_adaptor;
+    die if $self->{'file_error'};
+    # try to render
+    my $features = $self->get_data->[0]{'features'};
     if (!scalar(@$features)) {
       $self->no_features;
     } else {
@@ -324,10 +326,27 @@ sub _render {
     }
     alarm 0;
   };
+
   if ($@) {
-    warn "######## BAM ERROR: $@" unless $@ eq "alarm\n"; # propagate unexpected errors
+    my $error_message;
+    if ($@ eq "alarm\n") {
+      $error_message = " could not be rendered within the specified time limit (${timeout} sec)";
+    } elsif ($self->{'file_error'}) {
+      my $custom_error = $self->{'my_config'}->get('on_error');
+      if ($custom_error) {     
+        my %messages = EnsEMBL::Web::Constants::ERROR_MESSAGES;
+        my $message  = $messages{$custom_error};
+        $error_message = $message->[1];
+      }
+      else {
+        $error_message = $self->{'file_error'};
+      }
+    } else {
+      $error_message = 'could not retrieve BAM file';
+      warn "######## BAM ERROR: $@"; # propagate unexpected errors
+    }
     $self->reset;
-    return $self->errorTrack($self->error_track_name . " could not be rendered within the specified time limit (${timeout} sec)");
+    return $self->errorTrack($self->error_track_name . ': ' . $error_message);
   }
 }
 
@@ -345,6 +364,10 @@ sub reset {
 sub get_data {
 ## get the alignment features
   my $self = shift;
+  my $adaptor = $self->bam_adaptor;
+  if ($self->{'file_error'}) {
+    return [];
+  }
 
   my $slice = $self->{'container'};
   if (!exists($self->{_cache}->{data})) {
@@ -356,16 +379,20 @@ sub get_data {
     }
 
     my $data;
+
     foreach my $seq_region_name (@$seq_region_names) {
-      $data = $self->bam_adaptor->fetch_alignments_filtered($seq_region_name, $slice->start, $slice->end) || [];
+      $data = $adaptor->fetch_alignments_filtered($seq_region_name, $slice->start, $slice->end) || [];
       last if @$data;
-    } 
+    }
 
     $self->{_cache}->{data} = $data;
+
+    ## Explicitly close file, otherwise it can cause errors
+    $adaptor->htsfile_close;
   }
-  my $default_strand = $self->{'my_config'}->get('default_strand') || 1;
+
   ## Return data in standard format expected by other modules
-  return [{'features' => {$default_strand => $self->{_cache}->{data}},
+  return [{'features' => $self->{_cache}->{data},
             'metadata' => {'zmenu_caption' => 'Aligned reads'},
           }];
 } 
@@ -373,6 +400,12 @@ sub get_data {
 sub consensus_features {
   my $self = shift;
   unless ($self->{_cache}->{consensus_features}) {
+
+    my $adaptor = $self->bam_adaptor;
+    if ($self->{'file_error'}) {
+      return {};
+    }
+
     my $slice = $self->{'container'};
     
     ## Allow for seq region synonyms
@@ -383,7 +416,7 @@ sub consensus_features {
 
     my $consensus;
     foreach my $seq_region_name (@$seq_region_names) {
-      $consensus = $self->bam_adaptor->fetch_consensus($seq_region_name, $slice->start, $slice->end) || [];
+      $consensus = $adaptor->fetch_consensus($seq_region_name, $slice->start, $slice->end) || [];
       last if @$consensus;
     }    
 
@@ -522,8 +555,11 @@ sub _feature_title {
 sub bam_adaptor {
 ## get a bam adaptor
   my $self = shift;
+  return $self->{_cache}->{_bam_adaptor} if $self->{_cache}->{_bam_adaptor};
 
   my $url = $self->my_config('url');
+  my $check = {};
+
   if ($url) { ## remote bam file
     if ($url =~ /\#\#\#CHR\#\#\#/) {
       my $region = $self->{'container'}->seq_region_name;
@@ -542,11 +578,16 @@ sub bam_adaptor {
       my $datafiles = $dfa->fetch_all_by_logic_name($logic_name);
       my ($df) = @{$datafiles};
       $url = $df->path;
-      #$self->{_cache}->{_bam_adaptor} ||= $df->get_ExternalAdaptor(undef, 'BAM');
+      #$check = EnsEMBL::Web::File::Utils::IO::file_exists($url, {'nice' => 1});
     }
   }
   $self->{_cache}->{_bam_adaptor} ||= Bio::EnsEMBL::IO::Adaptor::HTSAdaptor->new($url);
 
+=pod
+  if ($check->{'error'}) {
+    $self->{'file_error'} = $check->{'error'}[0];
+  }
+=cut
   return $self->{_cache}->{_bam_adaptor};
 }
 
@@ -670,9 +711,7 @@ sub calc_coverage {
 ## calculate the coverage
   my ($self) = @_;
 
-  my $all_features    = $self->get_data->[0]{'features'};
-  my $default_strand  = $self->{'my_config'}->get('default_strand');
-  my $features        = $all_features->{$default_strand};
+  my $features    = $self->get_data->[0]{'features'};
 
   my $slice       = $self->{'container'};
   my $START       = $slice->start;
@@ -692,7 +731,7 @@ sub calc_coverage {
 
   #warn "sample_size = $sample_size";
 
-  my $coverage = $self->c_coverage($features, $sample_size, $lbin, $START);
+  my $coverage = $self->c_coverage($features, $sample_size, $lbin, $START, $self->strand);
      $coverage = [reverse @$coverage] if $slice->strand == -1;
 
   return $coverage;
@@ -701,7 +740,7 @@ sub calc_coverage {
 use Inline C => <<'END_OF_CALC_COV_C_CODE';
 
 #include "sam.h"
-AV * c_coverage(SV *self, SV *features_ref, double sample_size, int lbin, int START) {
+AV * c_coverage(SV *self, SV *features_ref, double sample_size, int lbin, int START, int STRAND) {
   AV *ret_cov = newAV();
   int *coverage = calloc(lbin+1,sizeof(int));
   int i;
@@ -731,6 +770,10 @@ AV * c_coverage(SV *self, SV *features_ref, double sample_size, int lbin, int ST
     }
 
     f = (bam1_t *)SvIV(SvRV(*elem));
+
+    if ((bam_is_rev(f) && STRAND == 1) || (!bam_is_rev(f) && STRAND == -1)) {
+      continue;
+    }
 
     fstart = f->core.pos+1;
     fend = bam_endpos(f);

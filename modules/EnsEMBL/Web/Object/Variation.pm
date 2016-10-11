@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,8 +23,6 @@ package EnsEMBL::Web::Object::Variation;
 ### Wrapper around a Bio::EnsEMBL::Variation 
 ### or EnsEMBL::Web::VariationFeature object  
 
-### PLUGGABLE: Yes, using Proxy::Object 
-
 ### STATUS: At Risk
 ### Contains a lot of functionality not directly related to
 ### manipulation of the underlying API object 
@@ -41,7 +40,7 @@ no warnings "uninitialized";
 
 use EnsEMBL::Web::Cache;
 use HTML::Entities qw(encode_entities);
-
+use EnsEMBL::Web::REST;
 use base qw(EnsEMBL::Web::Object);
 
 our $MEMD = EnsEMBL::Web::Cache->new;
@@ -58,7 +57,7 @@ sub availability {
       
       $availability->{'variation'} = 1;
       
-      $availability->{"has_$_"} = $counts->{$_} for qw(transcripts regfeats features populations population_freqs samples ega citation locations);
+      $availability->{"has_$_"} = $counts->{$_} for qw(uniq_transcripts transcripts regfeats features populations population_freqs samples ega citation locations);
       if($self->param('vf')){
         ## only show these if a mapping available
         $availability->{"has_$_"} = $counts->{$_} for qw(alignments ldpops);
@@ -89,6 +88,7 @@ sub counts {
 
   unless ($counts) {
     $counts = {};
+    $counts->{'uniq_transcripts'} = $self->count_uniq_transcripts;
     $counts->{'transcripts'} = $self->count_transcripts;
     $counts->{'regfeats'}    = $self->count_regfeats;
     $counts->{'features'}    = $counts->{'transcripts'} + $counts->{'regfeats'};
@@ -149,6 +149,24 @@ sub count_regfeats {
   # $counts += scalar map {@{$_->get_all_RegulatoryFeatureVariations}, @{$_->get_all_MotifFeatureVariations}} @{$self->get_variation_features};
   $counts += scalar map {@{$_->get_all_RegulatoryFeatureVariations}} @{$self->get_variation_features};
   return $counts;
+}
+
+sub count_uniq_transcripts {
+  my $self = shift;
+  my %mappings = %{ $self->variation_feature_mapping };
+  my $count = 0;
+
+  foreach my $varif_id (keys %mappings) {
+    next unless ($varif_id  eq $self->param('vf'));
+    my %transcriptnames;
+    for ( @{ $mappings{$varif_id}{transcript_vari} } ) {
+        $transcriptnames{$_->{transcriptname}} += 1;
+    }
+    $count = scalar keys %transcriptnames;
+    last;
+  }
+
+  return $count;
 }
 
 sub count_populations {
@@ -568,52 +586,6 @@ sub clinical_significance {
 }
 
 
-sub tagged_snp { 
-
-  ### Variation_object_calls
-  ### Args: none
-  ### Example    : my $pops = $object->tagged_snp
-  ### Description: The "is_tagged" call returns an array ref of populations 
-  ###              objects Bio::Ensembl::Variation::Population where this SNP 
-  ###              is a tag SNP
-  ### Returns hashref of pop_name
-
-  my $self = shift;
-  my  @vari_mappings = @{ $self->get_variation_features };
-  return {} unless @vari_mappings;
-
-  my %pops;
-  foreach my $vf ( @vari_mappings ) {
-    foreach my $pop_obj ( @{ $vf->is_tagged } ) {
-      $pops{$self->pop_name($pop_obj)} = "Tagged SNP";
-    }
-  }
-  return \%pops or {};
-}
-
-sub tag_snp { 
-
-  ### Variation_object_calls
-  ### Args: none
-  ### Example    : my $pops = $object->tagged_snp
-  ### Description: The "is_tagged" call returns an array ref of populations 
-  ###              objects Bio::Ensembl::Variation::Population where this SNP 
-  ###              is a tag SNP
-  ### Returns hashref of pop_name
-
-  my $self = shift;
-  my  @vari_mappings = @{ $self->get_variation_features };
-  return {} unless @vari_mappings;
-
-  my %pops;
-  foreach my $vf ( @vari_mappings ) {
-    foreach my $pop_obj ( @{ $vf->is_tag } ) {
-      $pops{$self->pop_name($pop_obj)} = "Tag SNP";
-    }
-  }
-  return \%pops or {};
-}
-
 sub freqs {
 
   ### Population_allele_genotype_frequencies
@@ -649,8 +621,8 @@ sub freqs {
     push (@{ $data{$pop_id}{ssid}{$ssid}{AlleleFrequency} }, $allele_obj->frequency);
     push (@{ $data{$pop_id}{ssid}{$ssid}{AlleleCount} }, $allele_obj->count);
     push (@{ $data{$pop_id}{ssid}{$ssid}{Alleles} },   $allele_obj->allele);    
-    next if $data{$pop_id}{pop_info};
-    $data{$pop_id}{pop_info} = $self->pop_info($pop_obj);
+
+    $data{$pop_id}{pop_info} = $self->pop_info($pop_obj) unless exists $data{$pop_id}{pop_info};
     
     ## If frequency data is available, show frequency data submitter, else show observation submitter
     $data{$pop_id}{ssid}{$ssid}{submitter}  = $allele_obj->frequency_subsnp_handle($pop_obj);
@@ -1720,6 +1692,21 @@ sub hgvs_url {
   return [ $hub->url($p), encode_entities($refseq), encode_entities($hgvs_string) ];
 }
 
+
+## extract the names of any variants whch would be in the same location
+## if both were described at the most 3' location possible
+## insertions/ deletions only
+sub get_three_prime_co_located{
+
+    my $self = shift;
+
+    my $attribs = $self->Obj->get_all_attributes();
+
+    @{$self->{'shifted_co_located'}}  = ( exists $attribs->{"co-located allele"} ? split/\,/, $attribs->{"co-located allele"} : '');
+    return $self->{'shifted_co_located'};
+}
+
+
 ## extract data for table of publications citing this variant
 sub get_citation_data{
 
@@ -1741,4 +1728,82 @@ sub get_allele_genotype_colours {
                 );
   return \%colours;
 }
+
+# Get SNPedia description from snpedia.com
+sub get_snpedia_data {
+  my ($self, $var_id) = @_;
+  my $hub = $self->hub;
+  my $snpedia_url = $hub->get_ExtURL('SNPEDIA');
+  my $rest = EnsEMBL::Web::REST->new($hub, $snpedia_url);
+  my $args= {
+    'url_params' => {
+      'action' => 'query',
+      'prop' => 'revisions',
+      'titles' => $var_id,
+      'rvprop' => 'content',
+      'maxlag' => '5',
+      'format' => 'json',
+      '_delimiter' => '&'
+    }
+  };
+
+  my ($ref, $error) = $rest->fetch('api.php', $args);
+
+  if($error || ref $ref ne 'HASH') {
+    return {};
+  }
+
+  # get the page id and the page hashref with title and revisions
+  my ($pageid, $pageref) = each %{ $ref->{query}->{pages} };
+  # get the first revision
+  my $rev = @{ $pageref->{revisions } }[0];
+  # delete the revision from the hashref
+  delete($pageref->{revisions});
+  # if the page is missing then return the pageref
+  return $pageref if ( defined $pageref->{missing} );
+
+  # Parse description from the result by applying some heuristics
+  # Tested working for most cases
+  
+  # Convert all newlines to *** to remove newline characters
+  $rev->{'*'} =~s/\n+/***/g;
+
+  # Remove PMID and Title
+  $rev->{'*'} =~s/((\*{3})+\{\{PMID\|(\d+).*?\}\}.*(\.)?\*{3})//g;
+
+  # Remove PMID Auto and Title
+  # $rev->{'*'} =~s/(\{\{PMID Auto(.*)?\|PMID=(\d+).*?\}\}.*(\.)?)//g;
+  $rev->{'*'} =~s/\{\{PMID Auto\*+?.*\}\}//g;
+  $rev->{'*'} =~s/\{\{PMID Auto.*?\}\}//g;
+
+  # Remove all content inside {{ }} except 'PMIDs inside a paragraph'
+  $rev->{'*'} =~s/(\{\{(?!PMID).*?\}\})//g;
+
+  # Link all PMIDs to EPMC
+  $rev->{'*'} =~s/\{\{PMID\|(\d+)?.*?\}\}/"[" . $hub->get_ExtURL_link("PMID:$1", 'EPMC_MED', { 'ID' => $1 }) . "]"/ge;
+  $rev->{'*'} =~s/PMID\s(\d+)/$hub->get_ExtURL_link("PMID:$1", 'EPMC_MED', { 'ID' => $1 })/ge;
+
+  # Remove starting newline characters
+  $rev->{'*'} =~s/^(\*{3})+//g;
+
+  # Remove 'Further reading (with comments)'
+  $rev->{'*'} =~s/Further reading \(with comments\)//g;
+
+  # Convert '''text''' s to <b>text</b>
+  $rev->{'*'} =~s/'''(.*)'''/<b>$1<\/b>/g;
+
+  # Link content inside [[ rs id ]] back to e!
+  $rev->{'*'} =~s/\[\[(rs\d+?)\]\]/($1 ne $var_id) ? "<a href=\"" . $hub->url({ v => $1 }) . "\">$1<\/a>" : "<b>$1<\/b>"/ge;
+  $rev->{'*'} =~s/\[\[(?!rs\d+)(.*?)\]\]/($1 ne $var_id) ? $hub->get_ExtURL_link($1, 'SNPEDIA_SEARCH', { 'ID' => $1 }) : "<b>$1<\/b>"/ge;
+
+  # Create html links for content like [url linktext]
+  $rev->{'*'} =~s/\[(http:\/\/.*?)\s(.*?)\]/<a href="$1">$2<\/a>/g;
+
+  # Display only the first paragraph
+  my @desc_arr = split(/\*\*\*+/, $rev->{'*'});
+
+  # combine the pageid, the latest revision and the page title into one hash
+  return { 'pageid'=>$pageid, %{ $rev }, 'desc'=>\@desc_arr, %{ $pageref } };
+}
+
 1;

@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -109,7 +110,8 @@ sub file {
 
 sub format {
   ### a
-  my $self = shift;
+  my ($self, $format) = @_;
+  $self->{'format'} = $format if $format;
   return $self->{'format'};
 }
 
@@ -250,7 +252,6 @@ sub create_tracks {
     $prioritise   = 1 if $metadata->{'priority'};
 
     my $raw_features  = $parser->cache->{'summary'} || [];
-    my $strand        = $metadata->{'default_strand'} || 1;
     my $features      = [];
     my $max_score     = 0;
     my $min_score     = 0;
@@ -258,7 +259,7 @@ sub create_tracks {
     foreach my $f (@$raw_features) {
       my ($seqname, $start, $end, $score) = @$f;
       ## Skip features that lie outside the current slice
-      next if ( !(first {$seqname eq $_} @$seq_region_names)
+      next if (!(first {$seqname eq $_} @$seq_region_names)
                 || $end < $slice->start || $start > $slice->end);
       push @$features, {
                         'seq_region' => $seqname,
@@ -267,13 +268,15 @@ sub create_tracks {
                         'score'      => $score,
                         'colour'     => $metadata->{'colour'},
                         };
-      $max_score = $score if $score >= $max_score; 
-      $min_score = $score if $score <= $min_score; 
+      if ($score && $score !~ /,/) { ## Ignore pairwise "scores" that are RGB colours
+        $max_score = $score if $score >= $max_score; 
+        $min_score = $score if $score <= $min_score; 
+      }
     }
     $data->{$track_key}{'metadata'}{'max_score'} = $max_score;
     $data->{$track_key}{'metadata'}{'min_score'} = $min_score;
 
-    $data->{$track_key}{'features'}{$strand} = $features;
+    $data->{$track_key}{'features'} = $features;
   }
   else {
     while ($parser->next) {
@@ -289,7 +292,8 @@ sub create_tracks {
       }
 
       my ($seqname, $start, $end) = $self->coords;
-      if ($slice && $extra_config->{'pix_per_bp'}) {
+      my $strand = $strandable ? $self->parser->get_strand : 0;
+      if ($slice && $extra_config->{'pix_per_bp'} && $extra_config->{'skip_overlap'}) {
         ## Skip if already have something on this pixel
         my $here = int($start*$extra_config->{'pix_per_bp'});
         next if $max_seen >= $here;
@@ -297,8 +301,11 @@ sub create_tracks {
       }
 
       if ($slice) {
-        ## Skip features that lie outside the current slice
-        next if ( !(first {$seqname eq $_} @$seq_region_names)
+        ## Skip features that are on the 'wrong' strand or lie outside the current slice
+        my $omit = $extra_config->{'strand_to_omit'};
+        next if (($strandable && (($omit && $strand == $omit)
+                                    || ($extra_config->{'omit_unstrandable'} && $strand == 0)))
+                  || !(first {$seqname eq $_} @$seq_region_names)
                   || $end < $slice->start || $start > $slice->end);
         $self->build_feature($data, $track_key, $slice, $strandable);
       }
@@ -328,11 +335,11 @@ sub create_tracks {
   ## Indexed formats cache their data, so the above loop won't produce a track
   ## at all if there are no features in this region. In order to draw an
   ## 'empty track' glyphset we need to manually create the empty track
-  if (!keys $data) {
+  if (!keys %$data) {
     $order  = ['data'];
     $data   = {'data' => {'metadata' => $extra_config || {}}};
     if ($slice) {
-      $data->{'data'}{'features'} = {'1' => [], '-1' => []};
+      $data->{'data'}{'features'} = [];
     }
     else {
       $data->{'data'}{'bins'} = {};
@@ -343,6 +350,8 @@ sub create_tracks {
     $self->munge_densities($data);
   }
 
+  ## We need slice length for formats that assemble transcripts from individual features, e.g. GFF3
+  $self->{'slice_length'} = $slice ? $slice->length : 0;
   $self->post_process($data);
 
   ## Finally sort the completed tracks
@@ -387,20 +396,16 @@ sub build_feature {
   my $hash = $self->create_hash($slice, $data->{$track_key}{'metadata'});
   return unless keys %$hash;
 
-  if ($hash->{'score'}) {
+  if ($hash->{'score'} && $hash->{'score'} !~ /,/) { ## Ignore pairwise "scores" that are RGB colours
     $metadata->{'max_score'} = $hash->{'score'} if $hash->{'score'} >= $metadata->{'max_score'};
     $metadata->{'min_score'} = $hash->{'score'} if $hash->{'score'} <= $metadata->{'min_score'};
   }
 
-  my $feature_strand = $data->{$track_key}{'metadata'}{'force_strand'} 
-                          || $hash->{'strand'} 
-                          || $data->{$track_key}{'metadata'}{'default_strand'};
-
-  if ($data->{$track_key}{'features'}{$feature_strand}) {
-    push @{$data->{$track_key}{'features'}{$feature_strand}}, $hash; 
+  if ($data->{$track_key}{'features'}) {
+    push @{$data->{$track_key}{'features'}}, $hash; 
   }
   else {
-    $data->{$track_key}{'features'}{$feature_strand} = [$hash];
+    $data->{$track_key}{'features'} = [$hash];
   }
 }
 
@@ -435,7 +440,7 @@ sub munge_densities {
 sub href {
   my ($self, $params) = @_;
   return $self->hub->url('ZMenu', {
-                                    'action'            => 'UserData', 
+                                    'action'            => $params->{'action'} || 'UserData', 
                                     'config'            => $self->config_type,  
                                     'track'             => $self->track,
                                     'format'            => $self->format, 
@@ -444,6 +449,7 @@ sub href {
                                     'fake_click_end'    => $params->{'end'},
                                     'fake_click_strand' => $params->{'strand'},
                                     'feature_id'        => $params->{'id'},              
+                                    %{$params->{'zmenu_extras'}||{}}
                                   });
 }
 
@@ -458,18 +464,9 @@ sub validate {
   ### Wrapper around the parser's validation method
   my $self = shift;
   my $valid = $self->parser->validate;
-
-  if ($valid && $valid =~ /[a-z]+/) {
-    ## Something weird like bedgraph!
-    $self->{'format'} = $valid;
-    ## Update session record accordingly
-    my $record = $self->hub->session->get_data('type' => 'upload', 'code' => $self->file->code);
-    if ($record) {
-      $record->{'format'} = $valid;
-      $self->hub->session->set_data(%$record);
-    }
+  if ($valid && $self->parser->format) {
+    $self->format($self->parser->format->name);
   }
-
   return $valid ? undef : 'File did not validate as format '.$self->format;
 }
 

@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,13 +40,13 @@ sub content {
 
   #configure two Vega tracks in one
   my $config = $self->hub->get_imageconfig('Vkaryotype');
-  if ($config->get_node('Vannotation_status_left') & $config->get_node('Vannotation_status_right')) {
+  if ($config->get_node('Vannotation_status_left') && $config->get_node('Vannotation_status_right')) {
     $config->get_node('Vannotation_status_left')->set('display', $config->get_node('Vannotation_status_right')->get('display'));
   }
 
   ## Get features from URL to draw (if any)
   if ($id) {
-    my $object = $self->builder->create_objects('Feature', 'lazy');
+    my $object = $self->builder->create_object('Feature');
     if ($object && $object->can('convert_to_drawing_parameters')) {
       $features = $object->convert_to_drawing_parameters;
     }
@@ -139,7 +140,7 @@ sub _render_features {
 
           #add extra description only for GO (gene ontologies) which is determined by param gotype in url
           if($go) {
-            my $adaptor = $hub->get_databases('go')->{'go'}->get_OntologyTermAdaptor;
+            my $adaptor = $hub->get_adaptor('get_OntologyTermAdaptor', 'go');
             my $go_hash = $adaptor->fetch_by_accession($id);
             my $go_name = $go_hash->{name};
             $go_link    = $hub->get_ExtURL_link($id, $go, $id)." ".$go_name; #get_ExtURL_link will return a text if $go is not valid
@@ -341,6 +342,27 @@ sub _render_features {
   return $html;
 }
 
+sub buttons {
+  my $self    = shift;
+  my $hub     = $self->hub;
+  my @buttons;
+
+  my $params = {
+                'type'    => 'UserData',
+                'action'  => 'FeatureView',
+                };
+
+  push @buttons, {
+                    'url'     => $hub->url($params),
+                    'caption' => 'Add features',
+                    'class'   => 'add',
+                    'modal'   => 1
+                    };
+
+  return @buttons;
+}
+
+
 sub _feature_table {
   my ($self, $feat_type, $feature_set, $default_column_info) = @_;
   my $html;
@@ -385,14 +407,37 @@ sub _feature_table {
 sub _configure_Gene_table {
   my ($self, $feature_type, $feature_set) = @_;
   my $rows = [];
- 
+
   my $header = 'Gene Information';
+  my $count  = scalar @{$feature_set->[0]};
   if ($self->hub->param('ftype') eq 'Domain') {
     ## Override default header
     my $domain_id = $self->hub->param('id');
-    my $count     = scalar @{$feature_set->[0]};
     my $plural    = $count > 1 ? 'genes' : 'gene';
     $header       = "Domain $domain_id maps to $count $plural:";
+  } elsif ( !( scalar ($self->hub->species_defs->ENSEMBL_CHROMOSOMES || []) && $self->hub->species_defs->MAX_CHR_LENGTH ) ) {
+    ## No karyotype image
+    my ( $go_link );
+    my $id = $self->hub->param('id');
+    
+    #add extra description only for GO (gene ontologies) which is determined by param gotype in url
+    my $go = $self->hub->param('gotype');
+    if ( $go ) {
+      my $adaptor = $self->hub->get_adaptor('get_OntologyTermAdaptor', 'go');
+      my $go_hash = $adaptor->fetch_by_accession($id);
+      my $go_name = $go_hash->{name};
+      $go_link    = $self->hub->get_ExtURL_link($id, $go, $id)." ".$go_name; #get_ExtURL_link will return a text if $go is not valid
+    }
+
+    my $assoc_name = $self->hub->param('name');
+    unless ( $assoc_name ) {
+      $assoc_name .= $go_link ? $go_link : $id;
+    }
+
+    if ( $assoc_name ) {
+      my $plural = $count > 1 ? 'Genes' : 'Gene';
+      $header = "$plural associated with $assoc_name";
+    }
   }
 
   my $column_order = [qw(names loc extname)];
@@ -537,7 +582,7 @@ sub _location_link {
             action  => 'View',
             r       => $coords, 
             h       => $f->{'label'},
-            ph      => $self->hub->param('ph'),
+            ph      => $self->hub->param('ph') || undef,
             __clear => 1
           }),
           $region, $f->{'start'}, $f->{'end'},
@@ -557,7 +602,7 @@ sub _names_link {
     'action'    => 'Summary',
     $obj_param  => $name,
     'r'         => $coords, 
-    'ph'        => $self->hub->param('ph'),
+    'ph'        => $self->hub->param('ph') || undef,
     __clear     => 1
   };
 

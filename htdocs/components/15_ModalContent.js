@@ -1,5 +1,6 @@
 /*
- * Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+ * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+ * Copyright [2016] EMBL-European Bioinformatics Institute
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +24,7 @@ Ensembl.Panel.ModalContent = Ensembl.Panel.LocalContext.extend({
   
   init: function () {
     var panel = this;
-    
+
     this.activeLink = false;
     
     this.base();
@@ -119,7 +120,7 @@ Ensembl.Panel.ModalContent = Ensembl.Panel.LocalContext.extend({
       },
       error: function (e) {
         if (e.status !== 0) {
-          this.displayErrorMessage();
+          this.displayErrorMessage(e.responseText);
         }
       }
     });
@@ -127,7 +128,7 @@ Ensembl.Panel.ModalContent = Ensembl.Panel.LocalContext.extend({
   
   formSubmit: function (form, data) {
     data = data || form.serialize();
-    
+
     $.ajax({
       url: form.attr('action'),
       type: form.attr('method'),
@@ -152,7 +153,7 @@ Ensembl.Panel.ModalContent = Ensembl.Panel.LocalContext.extend({
       },
       error: function (e) {
         if (e.status !== 0) {
-          this.displayErrorMessage();
+          this.displayErrorMessage(e.responseText);
         }
       }
     });
@@ -163,16 +164,33 @@ Ensembl.Panel.ModalContent = Ensembl.Panel.LocalContext.extend({
   },
   
   updateContent: function (json) {
+    var panel = this;
+
     if (json.wrapper) {
       this.elLk.content.wrapInner(json.wrapper);
     }
   
     this.elLk.content.html(json.content);
-       
+
     if ($('.modal_reload', this.el).length) {
       Ensembl.EventManager.trigger('queuePageReload', '', false, false, $('.modal_reload', this.el).attr('href'));
     }
     
+    if ($('.export_buttons_preview', this.el).length) {
+      $('.export_buttons_preview', this.el).on('click', function() {
+        var action = $('input[name="' + this.name + '"]:hidden', panel.el);
+        if (this.name === 'uncompressed') {
+          window.location = $(action).val();
+          Ensembl.EventManager.trigger('modalClose');
+          return;
+        }
+        else if (this.name === 'gz') {
+          $('form#export', this.el).attr('action', $(action).val())
+            .find('input[name="compression"]').val('gz');
+        }
+        $('form#export', this.el).submit();
+      });
+    }
     this.initialize();
   },
   
@@ -208,7 +226,6 @@ Ensembl.Panel.ModalContent = Ensembl.Panel.LocalContext.extend({
   },
 
   displayErrorMessage: function (message) {
-    message = message || 'Sorry, the page request failed to load.';
-    this.elLk.content.html('<div class="error ajax_error"><h3>Ajax error</h3><div class="error-pad"><p>' + message + '</p></div></div>');
+    this.elLk.content.html('<div class="error ajax_error"><h3>Ajax error</h3><div class="error-pad"><p>Sorry, the page request failed to load.</p><pre></pre></div></div>').find('pre').text(message || '');
   }
 });

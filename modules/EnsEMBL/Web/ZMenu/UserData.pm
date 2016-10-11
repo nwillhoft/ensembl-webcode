@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,7 +37,8 @@ sub content {
   my $click_data = $self->click_data;
   
   return unless $click_data;
-  $click_data->{'display'} = 'text';
+  $click_data->{'display'}  = 'text';
+  $click_data->{'strand'}   = $hub->param('fake_click_strand');
 
   my $strand = $hub->param('fake_click_strand') || 1;
   my ($caption, @features);
@@ -56,7 +58,7 @@ sub content {
       next unless $track->{'features'};
       $caption ||= $track->{'metadata'}{'zmenu_caption'};
       if ($feature_id) {
-        foreach (@{$track->{'features'}{$strand}||[]}) {
+        foreach (@{$track->{'features'}||[]}) {
           if ($_->{'label'} eq $feature_id) {
             $_->{'track_name'} = $track->{'metadata'}{'name'};
             $_->{'url'}        = $track->{'metadata'}{'url'};
@@ -66,7 +68,7 @@ sub content {
         }
       }
       else {
-        push @features, @{$track->{'features'}{$strand}||[]};
+        push @features, @{$track->{'features'}||[]};
       }
     }
   }
@@ -110,7 +112,12 @@ sub feature_content {
     if ($_->{'extra'}) {
       foreach my $extra (@{$_->{'extra'}||[]}) {
         next unless $extra->{'name'};
-        $self->add_entry({'type' => $extra->{'name'}, 'label' => $extra->{'value'}});
+        if ($extra->{'value'} =~ /<a href/) {
+          $self->add_entry({'type' => $extra->{'name'}, 'label_html' => $extra->{'value'}});
+        }
+        else {
+          $self->add_entry({'type' => $extra->{'name'}, 'label' => $extra->{'value'}});
+        }
       }
     }
 

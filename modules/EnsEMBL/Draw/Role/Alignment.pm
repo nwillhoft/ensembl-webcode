@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,6 +35,30 @@ sub render_as_alignment_label {
   $self->{'my_config'}->set('show_labels', 1);
   $self->draw_features;
 }
+
+sub render_as_transcript_nolabel {
+  my $self = shift;
+  $self->{'my_config'}->set('drawing_style', ['Feature::Transcript']);
+  $self->draw_features;
+}
+
+sub render_as_transcript_label {
+  my $self = shift;
+  $self->{'my_config'}->set('drawing_style', ['Feature::Transcript']);
+  $self->{'my_config'}->set('show_labels', 1);
+  $self->draw_features;
+}
+
+sub render_interaction {
+  my $self = shift;
+  $self->{'my_config'}->set('drawing_style', ['Feature::Interaction']);
+  $self->{'my_config'}->set('bumped', 0); 
+  $self->draw_features;
+  ## Limit track height to that of biggest arc
+  my $max_height  = $self->{'my_config'}->get('max_height');
+  $self->{'maxy'} = $max_height if $max_height;
+}
+
 
 sub render_half_height {
   my $self = shift;
@@ -74,6 +99,7 @@ sub render_ungrouped {
   $self->{'my_config'}->set('bumped', 0);
   $self->draw_features;
 }
+
 
 sub convert_cigar_to_blocks {
   ## The drawing code shouldn't care what a cigar string is!

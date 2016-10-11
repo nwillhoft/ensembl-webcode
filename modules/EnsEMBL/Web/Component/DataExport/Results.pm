@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,22 +44,26 @@ sub content {
   my $path        = $hub->param('file');
   my $html;
 
-  $html .= sprintf '<h2>Download</h2><a href="%s">Download your %s file</a>', $hub->url('Download', {
+  my $export_action = $hub->param('export_action');
+  my $back_action = $hub->url({'action' => 'Output',  'function' => '', '__clear' => 1});
+  my $download_href = $hub->url('Download', {
     'action'      => '',
     'function'    => '',
     'filename'    => $filename,
     'file'        => $path,
-    'compression' => ''
-  }), $format;
+    'compression' => '',
+    'format'      => $format
+  });
+  my $download_compressed_action = $hub->url({'action' => 'Output',  'function' => '', '__clear' => 1});
 
   ## Hidden form taking you back to the beginning
-  my $form      = $self->new_form({'id' => 'export', 'action' => $hub->url({'action' => $hub->param('export_action')}), 'method' => 'post'});
+  my $form      = $self->new_form({'id' => 'export', 'class' => 'bgcolour', 'action' => $hub->url({'action' => $hub->param('export_action')}), 'method' => 'post'});
   my $fieldset  = $form->add_fieldset;
 
   my @core_params = keys %{$hub->core_object('parameters')};
   push @core_params, qw(name format compression data_type data_action component export_action align g1);
 
-  ## Have to pass species selection back to form, as it's not stored in viewconfig
+  ## Have to pass species selection back to form, as it's not stored in view_config
   foreach my $species (grep { /species_/ } $hub->param) {
     push @core_params, $species; 
   }
@@ -88,12 +93,22 @@ sub content {
     $fieldset->add_hidden($params);
   }
 
-  $fieldset->add_button({
-      'type'    => 'Submit',
-      'name'    => 'submit',
-      'value'   => 'Back',
-    });
+  # Keep
+  $fieldset->add_hidden([
+    { name => 'back', value => $back_action },
+    { name => 'uncompressed', value => $download_href },
+    { name => 'gz', value => $download_compressed_action },
+  ]);
 
+  $fieldset->add_field({
+    'field_class' => [qw(export_buttons_div)],
+    'inline'      => 1,
+    'elements'    => [
+      { type => 'button', value => 'Back', name => 'back', class => 'export_buttons_preview' },
+      { type => 'button', value => 'Download', name => 'uncompressed', class => 'export_buttons_preview' },
+      { type => 'button', value => 'Download Compressed', name => 'gz', class => 'export_buttons_preview' },
+    ]
+  });
 
   $html .= $form->render;
 
@@ -102,7 +117,7 @@ sub content {
     my $read = $file->read;
     if ($read->{'content'}) {
       (my $preview = $read->{'content'}) =~ s/\n{2,}/\n/g;
-      $html .= '<h2 style="margin-top:1em">File preview</h2><div class="code"><pre style="color:#333">';
+      $html .= '<h2 style="margin-top:1em">File preview ('. $format .')</h2><div class="code"><pre style="color:#333">';
       $html .= encode_entities($preview);
       $html .= '</pre>';
     }

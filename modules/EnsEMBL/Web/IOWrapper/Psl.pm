@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -57,14 +58,13 @@ sub create_hash {
   my $colour = $self->set_colour($colour_params);
 
   my $label = $self->parser->get_qName;
-  my $feature_strand = $strand || $metadata->{'default_strand'};
   my $href = $self->href({
                         'id'          => $label,
                         'url'         => $metadata->{'url'} || '',
                         'seq_region'  => $seq_region,
                         'start'       => $feature_start,
                         'end'         => $feature_end,
-                        'strand'      => $feature_strand,
+                        'strand'      => $strand,
                         });
 
   ## Start and end need to be relative to slice,

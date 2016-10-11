@@ -1,6 +1,7 @@
 =head1 sLICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,7 +43,7 @@ sub match {
       return 0 unless $value<=$range->{'max'};
     }
   } else {
-    if($range->{'nulls'}) { return $range->{'nulls'}; }
+    if($range->{'no_nulls'}) { return !$range->{'no_nulls'}; }
   }
   return 1;
 }

@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,8 +21,6 @@ package EnsEMBL::Web::Object::Export;
 
 ### NAME: EnsEMBL::Web::Object::Export
 ### Wrapper around a dynamically generated Bio::EnsEMBL data object  
-
-### PLUGGABLE: Yes, using Proxy::Object 
 
 ### STATUS: At Risk
 
@@ -233,7 +232,7 @@ sub modify_gene_options {
 sub params :lvalue {$_[0]->{'params'};  }
 sub string { return shift->output('string', @_); }
 sub html   { return shift->output('html',   @_); }
-sub image_width { return $ENV{'ENSEMBL_IMAGE_WIDTH'}; }
+sub image_width { return shift->hub->image_width; }
 sub _warning { return shift->_info_panel('warning', @_ ); } # Error message, but not fatal
 
 sub html_format { return $_[0]->hub->param('_format') ne "TextGz"; }
@@ -482,7 +481,7 @@ sub alignment {
   my $hub  = $self->hub;
   
   # Nasty hack to link export to the view config for alignments. Eww.
-  $hub->get_viewconfig('Compara_Alignments', $hub->type, 'cache');
+  $hub->get_viewconfig({component => 'Compara_Alignments', type => $hub->type, cache => 1});
   
   $self->{'alignments_function'} = 'get_SimpleAlign';
   
@@ -548,7 +547,7 @@ sub features {
     }
   }
   
-  if ($params->{'variation'}) {
+  if ($params->{'variation'} && $self->database('variation')) {
     my $vdb = $self->database('variation'); 
     my $vf_adaptor = $vdb->get_VariationFeatureAdaptor;     
     foreach (@{$vf_adaptor->fetch_all_by_Slice($slice)}) {

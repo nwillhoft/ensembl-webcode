@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +31,7 @@ sub label_classes {
     'Load configuration'       => 'config-load',
     'Reset configuration'      => 'config-reset',
     'Reset track order'        => 'order-reset',
-    'Add your data'            => 'data',
+    'Custom tracks'            => 'data',
   };
 }
 
@@ -41,9 +42,10 @@ sub init {
   
   if ($hub->script eq 'Config') {
     my $action       = $hub->action;
-    my $image_config = $hub->get_imageconfig($hub->get_viewconfig($action)->image_config);
+    my $image_config = $hub->get_viewconfig($action)->image_config_type;
+       $image_config = $hub->get_imageconfig($image_config) if $image_config;
     my $rel          = "modal_config_$action";
-       $rel         .= '_' . lc $hub->species if $image_config && $image_config->multi_species && $hub->referer->{'ENSEMBL_SPECIES'} ne $hub->species;
+       $rel         .= '_' . lc $hub->species if $image_config && $image_config->get_parameter('multi_species') && $hub->referer->{'ENSEMBL_SPECIES'} ne $hub->species;
 
     $self->add_entry({
       caption => 'Save configuration as...',
@@ -89,11 +91,11 @@ sub init {
       }
       
       $self->add_entry({
-        caption => 'Add your data',
+        caption => 'Custom tracks',
         class   => 'modal_link',
         url     => $hub->url({
           type    => 'UserData',
-          action  => 'SelectFile',
+          action  => 'ManageData',
           __clear => 1
         })
       });

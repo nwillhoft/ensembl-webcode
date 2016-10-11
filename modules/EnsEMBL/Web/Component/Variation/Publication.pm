@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -61,7 +62,7 @@ sub content {
     { key => 'text',   title => 'Full text', align => 'left', sort => 'html'    },  
   );
 
-  $table->add_columns( { key => 'ucsc',   title => 'UCSC', align => 'center', sort => 'html', help => 'View publication data in USCS website' }) if $self->hub->species eq 'Homo_sapiens';
+  $table->add_columns( { key => 'ucsc',   title => 'UCSC', align => 'center', sort => 'html', help => 'View publication data in UCSC website' }) if $self->hub->species eq 'Homo_sapiens';
   foreach my $row (@{$table_rows}){  $table->add_rows($row);}
 
   $html .=  $table->render;

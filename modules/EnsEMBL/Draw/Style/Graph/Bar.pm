@@ -1,6 +1,7 @@
 =head1 LICENSE
 
-Copyright [1999-2016] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,9 +36,19 @@ sub draw_wiggle {
   ## How wide is each bar, in pixels? (needed for label overlay)
   my $bar_width   = $self->image_config->container_width * $self->{'pix_per_bp'} / scalar(@$features);
 
-  use Data::Dumper;
+  my $plain_x = 0;
 
   foreach my $f (@$features) {
+
+    unless(ref($f) eq 'HASH') {
+      # Plain old value
+      $f = {
+        start => $plain_x,
+        end => $plain_x + $c->{'unit'},
+        score => $f,
+      };
+      $plain_x += $c->{'unit'};
+    }
 
     my $start   = $f->{'start'};
     my $end     = $f->{'end'};
@@ -69,7 +80,7 @@ sub draw_wiggle {
     push @{$self->glyphs}, $self->Rect($params);
 
     ## Superimposed label - mainly for sequence
-    if ($self->track_config->get('label_overlay') && $f->{'label'}) {
+    if ($self->track_config->get('overlay_label') && $f->{'label'}) {
 
       ## Do we have space to draw the label?
       my $text_info   = $self->get_text_info($feature->{'label'});
