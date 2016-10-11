@@ -32,7 +32,7 @@ use EnsEMBL::Draw::VDrawableContainer;
 use EnsEMBL::Web::File::Dynamic::Image;
 use EnsEMBL::Web::Utils::DynamicLoader qw(dynamic_use);
 use EnsEMBL::Web::Exceptions;
-use Bio::EnsEMBL::IO::Writer;
+use EnsEMBL::Web::File::User;
 
 use parent qw(EnsEMBL::Web::Document::Image);
 
@@ -637,15 +637,24 @@ sub render_text {
 
   my $hub       = $self->hub;
   my $filename  = $hub->param('name') || 'data_exported_from_image.'.lc($format);
-  my $data      = [];
 
-  my $writer    = Bio::EnsEMBL::IO::Writer->new($format, $filename, $hub->species_defs);
+  my $output_file = EnsEMBL::Web::File::User->new(
+                        'hub'         => $hub,
+                        'name'        => $filename,
+                        'compression' => $hub->param('compression') ? 'gz' : '',
+                      );
+
+  my $data      = [];
+  my $writer_class = 'Bio::EnsEMBL::IO::Writer::'.uc($format);
+  return unless dynamic_use($writer_class, 1);
+  my $writer    = $writer_class->new;
 
   ## We don't want to create the entire image, just get the data for the glyphsets we're exporting
   ## This is basically a very cut-down version of DrawableContainer, omitting all the drawing stuff!
 
   my ($container, $config) = @{$self->drawable_container->{'contents'}[0]};
   return [] unless ($container && $config);
+  my %translators;
 
   foreach my $track_config (@{$config->glyphset_configs}) {
     my $track_id = $track_config->{'id'};
@@ -668,16 +677,33 @@ sub render_text {
           display     => 'text',
         });
     };
-    next if ($@ || !$glyphset || !$glyphset->can('get_export_data'));
+    next if ($@ || !$glyphset || !$glyphset->can('translator_class'));
+
+    my $tclass      = 'Bio::EnsEMBL::IO::Translator::'.$glyphset->translator_class;
+    next unless ($tclass && dynamic_use($tclass, 1));
+    ## Create a new translator only if one doesn't already exist
+    my $translator  = $translators{$tclass};
+    unless ($translator) {
+      $translator = $tclass->new;
+      $translators{$tclass} = $translator;
+    }
+    $writer->translator($translator);
 
     my $track_data = $glyphset->get_data;
 
     if ($track_data) {
-      #$writer->output_dataset($track_data);
+      foreach my $track (@$track_data) {
+        foreach (@{$track->{'features'}}) {
+          my $line = $writer->create_record($_);
+          warn ">>> LINE $line";
+          $output_file->write_line($line);
+          #$writer->write($_);
+        }
+      }
     }
   }
   ## Where do we download the completed file from?
-  return ''; #$writer->file_location;
+  return $output_file->write_location; 
 }
 
 1;
