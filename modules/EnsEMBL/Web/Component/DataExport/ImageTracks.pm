@@ -226,46 +226,43 @@ sub add_active_tracks {
   my ($self, $fieldset) = @_;
   my $hub = $self->hub;
 
-  my $vc      = $hub->get_viewconfig($hub->param('component'), $hub->param('data_type'));
+  my $vc      = $hub->get_viewconfig({'component' => $hub->param('component'), 
+                                      'type'      => $hub->param('data_type')});
   return unless $vc;
 
-  my $ic_name = $vc->image_config;
+  my $image_config = $vc->image_config;
   my $count = 0;
-  if ($ic_name) {
-    my $ic = $hub->get_imageconfig($ic_name);
-    if ($ic) {
-      my $tree = $ic->tree;
+  if ($image_config) {
+    my $tree = $image_config->tree;
 
-      foreach my $menu (@{$tree->child_nodes}) {
-        my @tracks;
-        foreach my $submenu (@{$menu->child_nodes}) {
-          foreach my $track (@{$submenu->child_nodes}) {
-            ## Skip tracks that are off (including matrix tracks currently set to 'default')
-            next if ($track->get('display') && ($track->get('display') eq 'off' || $track->get('display') eq 'default'));
-            next unless $track->get('can_export');
-            push @tracks, $track;
-          }
-        }
-        if (scalar(@tracks)) {
-          $fieldset->append_child('h4', { inner_HTML => $menu->get('caption')}); 
-          foreach my $track (@tracks) {
-            ## If exporting a single track via the menu, turn everything else off
-            my $selected = $hub->param('track') ? 0 : 1;
+    foreach my $menu ($tree->nodes) {
+      my @tracks;
+      foreach my $track ($menu->leaves) {
+        ## Skip tracks that are off (including matrix tracks currently set to 'default')
+        next if ($track->get('display') && ($track->get('display') eq 'off' || $track->get('display') eq 'default'));
+        next unless $track->get('can_export');
+        push @tracks, $track;
+      }
 
-            my $is_var = $menu eq 'variation' ? 1 : 0;
-            my $params = {
-                          'name'        => 'track_'.$track->{'id'},
-                          'label'       => $track->get('caption'), 
-                          'type'        => 'Checkbox',
-                          'value'       => 1,
-                          'class'       => $is_var ? '_var' : '',
-                          'field_class' => 'track-list',
-                          'no_colon'    => 1,
-                          };
-            $params->{'selected'} = 'selected' if $selected;
-            $fieldset->add_field($params);
-            $count++;
-          }
+      if (scalar(@tracks)) {
+        $fieldset->append_child('h4', { inner_HTML => $menu->get('caption')}); 
+        foreach my $track (@tracks) {
+          ## If exporting a single track via the menu, turn everything else off
+          my $selected = $hub->param('track') ? 0 : 1;
+
+          my $is_var = $menu eq 'variation' ? 1 : 0;
+          my $params = {
+                        'name'        => 'track_'.$track->{'id'},
+                        'label'       => $track->get('caption'), 
+                        'type'        => 'Checkbox',
+                        'value'       => 1,
+                        'class'       => $is_var ? '_var' : '',
+                        'field_class' => 'track-list',
+                        'no_colon'    => 1,
+                        };
+          $params->{'selected'} = 'selected' if $selected;
+          $fieldset->add_field($params);
+          $count++;
         }
       }
     }
