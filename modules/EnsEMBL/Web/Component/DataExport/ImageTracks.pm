@@ -142,14 +142,14 @@ sub content {
                                 'label'   => 'File format',
                                 'type'    => 'Dropdown',
                                 'values'  => $formats,
-                                'value'   => 'bed',
+                                'value'   => 'gtf',
                               });
 
     $feats_fieldset->add_field({
                                 'name'      => 'name',
                                 'label'     => 'File name',
                                 'type'      => 'String',
-                                'value'     => $self->default_file_name.'.bed',
+                                'value'     => $self->default_file_name.'.gtf',
                               });
 
     $feats_fieldset->add_field({
