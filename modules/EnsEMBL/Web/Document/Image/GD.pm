@@ -668,7 +668,7 @@ sub render_text {
           display     => 'text',
         });
     };
-    next if ($@ || !$glyphset || !$glyphset->can('get_data'));
+    next if ($@ || !$glyphset || !$glyphset->can('get_export_data'));
 
     my $track_data = $glyphset->get_data;
 
