@@ -646,6 +646,7 @@ sub render_text {
 
   my $data      = [];
   my $writer_class = 'Bio::EnsEMBL::IO::Writer::'.uc($format);
+  warn "@@@ WRITER CLASS $writer_class";
   return unless dynamic_use($writer_class, 1);
   my $writer    = $writer_class->new;
 
@@ -661,6 +662,7 @@ sub render_text {
     next unless $hub->param('track_'.$track_id);
 
     my $classname = 'EnsEMBL::Draw::GlyphSet::'.$track_config->get('glyphset');
+    warn ">>> GLYPHSET CLASS $classname";
 
     next unless dynamic_use($classname, 1);
 
@@ -677,19 +679,25 @@ sub render_text {
           display     => 'text',
         });
     };
-    next if ($@ || !$glyphset || !$glyphset->can('translator_class'));
+    next if ($@ || !$glyphset);
 
-    my $tclass      = 'Bio::EnsEMBL::IO::Translator::'.$glyphset->translator_class;
-    next unless ($tclass && dynamic_use($tclass, 1));
+    my $subclass  = $glyphset->translator_class;
+    next unless $subclass;
+    my $tclass    = "Bio::EnsEMBL::IO::Translator::$subclass";
+    warn "... TRANSLATOR CLASS $tclass";
+    next unless dynamic_use($tclass, 1);
     ## Create a new translator only if one doesn't already exist
     my $translator  = $translators{$tclass};
     unless ($translator) {
       $translator = $tclass->new;
       $translators{$tclass} = $translator;
     }
+    warn "... TRANSLATOR $translator";
     $writer->translator($translator);
 
     my $track_data = $glyphset->get_data;
+    use Data::Dumper;
+    warn "... TRACK DATA ".Dumper($track_data);
 
     if ($track_data) {
       foreach my $track (@$track_data) {
