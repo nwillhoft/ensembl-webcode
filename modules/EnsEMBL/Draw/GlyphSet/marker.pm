@@ -53,6 +53,8 @@ sub render_normal {
   $self->push($style->create_glyphs);
 }
 
+sub translator_class { return 'Hash'; }
+
 sub get_data {
   my ($self, $logic_name) = @_;
 

@@ -406,6 +406,11 @@ sub render_normal {
   return $self->{'text_export'} && $self->can('render_text') ? $rtn : undef;
 }
 
+sub translator_class { 
+  ## Stub - used by new text export 
+  return undef;
+}
+
 sub _render_text {
   my $self = shift;
   my ($feature, $feature_type, $extra, $defaults) = @_;
