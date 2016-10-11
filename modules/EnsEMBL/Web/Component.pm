@@ -145,6 +145,7 @@ sub cacheable     :AccessorMutator;
 sub mcacheable    :AccessorMutator; ## temporary method only (hr5)
 sub ajaxable      :AccessorMutator;
 sub configurable  :AccessorMutator;
+sub exportable    :AccessorMutator;
 sub has_image     :AccessorMutator;
 sub builder       :Accessor;
 sub hub           :Accessor;
