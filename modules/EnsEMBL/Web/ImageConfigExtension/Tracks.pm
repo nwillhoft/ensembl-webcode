@@ -419,10 +419,11 @@ sub add_marker_features {
 
   foreach (@$keys) {
     $self->_add_track($menu, $key, "marker_${key}_$_", $data->{$_}, {
-      glyphset => 'marker',
-      labels   => 'on',
-      colours  => $colours,
-      strand   => 'r',
+      glyphset    => 'marker',
+      labels      => 'on',
+      colours     => $colours,
+      strand      => 'r',
+      can_export  => 1,
     });
   }
 }
