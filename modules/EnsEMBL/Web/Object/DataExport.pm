@@ -53,7 +53,10 @@ sub create_component {
   my $object_type = ucfirst($hub->param('data_type'));
   $builder->create_object($object_type);
 
-  my $component = dynamic_require('EnsEMBL::Web::Component::'.$hub->param('data_type').'::'.$hub->param('component'));
+  my $class     = sprintf 'EnsEMBL::Web::Component::%s::%s', 
+                            $hub->param('data_type'), 
+                            $hub->param('component');
+  my $component = dynamic_require($class);
      $component = $component->new($hub, $builder, $hub->controller->renderer);
 
   if (!$component) {
