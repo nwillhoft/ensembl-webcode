@@ -235,13 +235,15 @@ sub add_active_tracks {
   if ($image_config) {
     my $tree = $image_config->tree;
 
-    foreach my $menu ($tree->nodes) {
+    foreach my $menu (@{$tree->root->child_nodes}) {
       my @tracks;
-      foreach my $track ($menu->leaves) {
-        ## Skip tracks that are off (including matrix tracks currently set to 'default')
-        next if ($track->get('display') && ($track->get('display') eq 'off' || $track->get('display') eq 'default'));
-        next unless $track->get('can_export');
-        push @tracks, $track;
+      foreach my $submenu (@{$menu->child_nodes}) {
+        foreach my $track (@{$submenu->child_nodes}) {
+          ## Skip tracks that are off (including matrix tracks currently set to 'default')
+          next if ($track->get('display') && ($track->get('display') eq 'off' || $track->get('display') eq 'default'));
+          next unless $track->get('can_export');
+          push @tracks, $track;
+        }
       }
 
       if (scalar(@tracks)) {
