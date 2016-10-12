@@ -102,6 +102,7 @@ sub get {
     my $feature_colour = $self->colour_key($f);
     push @$data, {
                   '_unique'       => join(':',$id,$f->start,$f->end),
+                  'chr'           => $slice->seq_region_name,
                   'start'         => $f->start,
                   'end'           => $f->end,
                   'colour'        => $feature_colour,
