@@ -42,11 +42,7 @@ sub render_normal {
   $self->{'my_config'}->set('show_labels', 1);
   $self->{'my_config'}->set('bumped', 'labels_only');
 
-  my @logic_names    = @{$self->my_config('logic_names') || []};
-  my $logic_name     = $logic_names[0];
-  ## Fetch all markers if this isn't a subset, e.g. SATMap
-  $logic_name        = undef if $logic_name eq 'marker';
-  my $data           = $self->get_data($logic_name);
+  my $data = $self->get_data;
 
   my $config = $self->track_style_config;
   my $style  = EnsEMBL::Draw::Style::Feature->new($config, $data);
@@ -56,7 +52,11 @@ sub render_normal {
 sub translator_class { return 'Hash'; }
 
 sub get_data {
-  my ($self, $logic_name) = @_;
+  my $self = shift;
+  my @logic_names    = @{$self->my_config('logic_names') || []};
+  my $logic_name     = $logic_names[0];
+  ## Fetch all markers if this isn't a subset, e.g. SATMap
+  $logic_name        = undef if $logic_name eq 'marker';
 
   my $hub = $self->{'config'}{'hub'}; 
   my $features = $hub->get_query('GlyphSet::Marker')->go($self,{
@@ -66,6 +66,7 @@ sub get_data {
                                 priority => $self->my_config('priority'),
                                 marker_id => $self->my_config('marker_id')
                   });
+  use Data::Dumper; warn Dumper($features);
   return [{'features' => $features}];
 }
 
