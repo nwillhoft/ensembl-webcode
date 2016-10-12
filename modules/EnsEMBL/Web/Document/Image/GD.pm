@@ -689,18 +689,17 @@ sub render_text {
       $translator = $tclass->new;
       $translators{$tclass} = $translator;
     }
-    warn "... TRANSLATOR $translator";
+    #warn "... TRANSLATOR $translator";
     $writer->translator($translator);
 
     my $track_data = $glyphset->get_data;
-    use Data::Dumper;
-    warn "... TRACK DATA ".Dumper($track_data);
+    #use Data::Dumper;
+    #warn "... TRACK DATA ".Dumper($track_data);
 
     if ($track_data) {
       foreach my $track (@$track_data) {
         foreach (@{$track->{'features'}}) {
-          my $line = $writer->create_record($_);
-          warn ">>> LINE $line";
+          my ($line) = $writer->create_record($_);
           $output_file->write_line($line);
           #$writer->write($_);
         }
