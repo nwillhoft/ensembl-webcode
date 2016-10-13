@@ -686,7 +686,7 @@ sub render_text {
     ## Create a new translator only if one doesn't already exist
     my $translator  = $translators{$tclass};
     unless ($translator) {
-      $translator = $tclass->new;
+      $translator = $tclass->new({'no_exception' => 1});
       $translators{$tclass} = $translator;
     }
     #warn "... TRANSLATOR $translator";
