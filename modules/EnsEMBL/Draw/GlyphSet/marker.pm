@@ -56,8 +56,7 @@ sub get_data {
   ## Fetch all markers if this isn't a subset, e.g. SATMap
   $logic_name        = undef if $logic_name eq 'marker';
 
-  #use Carp qw(cluck); cluck ">>> DISPLAY ".$self->my_config('display');
-  if ($self->my_config('display') eq 'text') {
+  if ($self->{'display'} eq 'text') {
     ## Don't use standard query, as it may be lacking information
     ## we need for export
     return $self->_get_export_data($logic_name);
