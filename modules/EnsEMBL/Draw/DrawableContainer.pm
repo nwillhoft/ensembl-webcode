@@ -45,7 +45,22 @@ my @section_colours = qw(#a6cee3 #1f78b4 #b2df8a #33a02c #fb9a99 #e31a1c
 
 sub new {
   my $class           = shift;
+  ## The _init method actually instantiates the drawable container
   my $self            = $class->_init(@_); 
+  $self->_create_image;
+  return $self;
+}
+
+sub new_empty {
+  my $class           = shift;
+  ## This method actually instantiates the drawable container
+  my $self            = $class->_init(@_); 
+  return $self;
+}
+
+sub _create_image {
+## Does the hard work of instantiating glyphsets and fetching all data 
+  my $self = shift; 
   my $primary_config  = $self->{'config'};
   my $sortable_tracks = $primary_config->get_parameter('sortable_tracks') eq 'drag';
   my $no_labels       = $primary_config->get_parameter('no_labels');
@@ -65,7 +80,7 @@ sub new {
      $inter_space     = 2 * $margin unless defined $inter_space;
   
   $self->{'__extra_block_spacing__'} -= $inter_space;
-  
+
   ## Loop through each pair of "container / config"s
   foreach my $CC (@{$self->{'contents'}}) {
     my ($container, $config) = @$CC;
@@ -455,8 +470,6 @@ sub new {
       $config->{'panel_width'} = undef;
     }
   }
-
-  return $self;
 }
 
 sub species_defs { return $_[0]->{'config'}->species_defs; }
