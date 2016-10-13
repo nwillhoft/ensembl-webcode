@@ -595,10 +595,9 @@ sub modal_form {
 }
 
 sub new_image {
-  my $self        = shift;
+  my $self = shift;
   my $hub         = $self->hub;
   my %formats     = EnsEMBL::Web::Constants::IMAGE_EXPORT_FORMATS;
-  my $export      = $hub->param('export');
   my $id          = $self->id;
   my $config_type = $self->viewconfig ? $self->viewconfig->image_config_type : undef;
   my (@image_configs, $image_config);
@@ -617,16 +616,27 @@ sub new_image {
     $image_config  = $_[1];
   }
   
-  if ($export) {
-    # Set text export on image config
-    $image_config->set_parameter('text_export', $export) if $formats{$export}{'extn'} eq 'txt';
-  }
-  
   $_->set_parameter('component', $id) for grep $_->type eq $config_type, @image_configs;
- 
   my $image = EnsEMBL::Web::Document::Image::GD->new($hub, $self, \@image_configs);
-  $image->drawable_container = EnsEMBL::Draw::DrawableContainer->new(@_) if $self->html_format;
-  
+
+  ## Do we want to export this image, and if so, in what format?
+  ## (because we don't want to create all the data up front if we're
+  ## going to write to a text file later)
+  my @export  = split(/-/,$hub->param('export'));
+  my $format  = (shift @export) || $hub->param('format') || '';
+  my $text_format;
+
+  my $text_formats  = EnsEMBL::Web::Constants::USERDATA_FORMATS;
+  if ($text_formats->{$format} && $text_formats->{$format}{'image_export'}) {
+    $text_format = $format;
+  }
+
+  if ($text_format) {
+    $image->drawable_container = EnsEMBL::Draw::DrawableContainer->new_empty(@_);
+  }
+  else {  
+    $image->drawable_container = EnsEMBL::Draw::DrawableContainer->new(@_);
+  }
   return $image;
 }
 
@@ -685,20 +695,18 @@ sub new_form {
 sub _export_image {
   my ($self, $image) = @_;
   my $hub = $self->hub;
-  
-  $image->{'export'} = 'iexport';
 
-  my @export = split(/-/,$hub->param('export'));
-  my $format = (shift @export) || $hub->param('format') || '';
+  $image->{'export'} = 'iexport'; ## Needed in order to show icon in blue bar
+  my @export  = split(/-/,$hub->param('export'));
+  my $format  = (shift @export) || $hub->param('format') || '';
 
   my %image_formats = EnsEMBL::Web::Constants::IMAGE_EXPORT_FORMATS;
   my $text_formats  = EnsEMBL::Web::Constants::USERDATA_FORMATS;
-  
+
   if ($image_formats{$format}) {
     my %params = @export;
     my $scale = abs($params{'s'}) || 1;
     my $contrast = abs($params{'c'}) || 1;
-
     $image->drawable_container->{'config'}->set_parameter('sf',$scale);
     $image->drawable_container->{'config'}->set_parameter('contrast',$contrast);
     
@@ -720,15 +728,18 @@ sub _export_image {
       $hub->param('format', $format);
       EnsEMBL::Web::Object::ImageExport::handle_download($self);
     }
-
     return 1;
   }
-  elsif ($text_formats->{$format} && $text_formats->{$format}{'image_export'}) {
+  elsif ($text_formats->{$format}) {
+    $image->{'data_export'} = 'ImageTracks';
     my $file = $image->render_text($format);
     $hub->param('file', $file);
+    return 1;
   }
-  
-  return 0;
+  else {
+    return 0;
+  }
+
 }
 
 sub toggleable_table {
