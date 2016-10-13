@@ -49,8 +49,6 @@ sub render_normal {
   $self->push($style->create_glyphs);
 }
 
-sub translator_class { return 'Hash'; }
-
 sub get_data {
   my $self = shift;
   my @logic_names    = @{$self->my_config('logic_names') || []};
@@ -58,15 +56,47 @@ sub get_data {
   ## Fetch all markers if this isn't a subset, e.g. SATMap
   $logic_name        = undef if $logic_name eq 'marker';
 
-  my $hub = $self->{'config'}{'hub'}; 
-  my $features = $hub->get_query('GlyphSet::Marker')->go($self,{
-                                slice => $self->{'container'},
-                                species => $self->{'config'}{'species'},
-                                logic_name => $logic_name,
-                                priority => $self->my_config('priority'),
-                                marker_id => $self->my_config('marker_id')
-                  });
-  return [{'features' => $features}];
+  #use Carp qw(cluck); cluck ">>> DISPLAY ".$self->my_config('display');
+  if ($self->my_config('display') eq 'text') {
+    ## Don't use standard query, as it may be lacking information
+    ## we need for export
+    return $self->_get_export_data($logic_name);
+  }
+  else {
+    my $hub = $self->{'config'}{'hub'}; 
+    my $features = $hub->get_query('GlyphSet::Marker')->go($self,{
+                                  slice => $self->{'container'},
+                                  species => $self->{'config'}{'species'},
+                                  logic_name => $logic_name,
+                                  priority => $self->my_config('priority'),
+                                  marker_id => $self->my_config('marker_id')
+                    });
+    return [{'features' => $features}];
+  }
+}
+
+sub translator_class { return 'EnsFeature'; }
+
+sub _get_export_data {
+  my ($self, $logic_name) = @_;
+  my $slice = $self->{'container'};
+  my @features;
+  
+  my $priority   = $self->my_config('priority');
+  my $marker_id  = $self->my_config('marker_id');
+  my $map_weight = 2;
+  @features   = (@{$slice->get_all_MarkerFeatures($logic_name, $priority, $map_weight)});
+  push @features, @{$slice->get_MarkerFeatures_by_Name($marker_id)} if ($marker_id and !grep {$_->display_id eq $marker_id} @features); ## Force drawing of specific marker regardless of weight (but only if not already being drawn!)
+ 
+  foreach my $f (sort { $a->seq_region_start <=> $b->seq_region_start }@features) {
+    my $ms  = $f->marker->display_MarkerSynonym;
+    my $id  = $ms ? $ms->name : '';
+      ($id) = grep $_ ne '-', map $_->name, @{$f->marker->get_all_MarkerSynonyms || []} if $id eq '-' || $id eq '';
+    $f->{'drawing_id'} = $id;
+  }
+  
+  return [{'features' => \@features}];
+
 }
 
 1;
