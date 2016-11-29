@@ -418,6 +418,7 @@ sub _read_in_ini_file {
       }
       
       open FH, $inifile or die "Problem with $inifile: $!";
+      warn ">>> PARSING INI FILE $inifile";
       
       my $current_section = undef;
       my $line_number     = 0;
@@ -428,6 +429,7 @@ sub _read_in_ini_file {
         
         if (/^\[\s*(\w+)\s*\]/) { # New section - i.e. [ ... ]
           $current_section = $1;
+          warn "... SECTION $current_section";
           $tree->{$current_section} ||= {}; # create new element if required
           
           # add settings from default
