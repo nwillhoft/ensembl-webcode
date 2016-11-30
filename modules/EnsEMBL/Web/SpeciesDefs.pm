@@ -407,6 +407,7 @@ sub _read_in_ini_file {
   my ($self, $filename, $defaults) = @_;
   my $inifile = undef;
   my $tree    = {};
+  use Data::Dumper;
   
   foreach my $confdir (@SiteDefs::ENSEMBL_CONF_DIRS) {
     if (-e "$confdir/ini-files/$filename.ini") {
@@ -435,7 +436,7 @@ sub _read_in_ini_file {
           # add settings from default
           if (defined $defaults->{$current_section}) {
             my %hash = %{$defaults->{$current_section}};
-            
+            warn Dumper(\%hash);
             $tree->{$current_section}{$_} = $defaults->{$current_section}{$_} for keys %hash;
           }
         } elsif (/([\w*]\S*)\s*=\s*(.*)/ && defined $current_section) { # Config entry
