@@ -324,6 +324,22 @@ sub process {
       map { $params->{$_} = 1 if $_ } $hub->param('param');
       map { $params->{'misc_set'}->{$_} = 1 if $_ } $hub->param('misc_set'); 
       $self->params = $params;
+      my $access_info = 'referer=';
+      if ($hub->referer->{'absolute_url'}) {
+        $hub->referer->{'absolute_url'} =~ m/^http(s)?\:\/\/([^\/]+)/;
+        my $referer = $2;
+        if ($hub->species_defs->ENSEMBL_SERVERNAME eq $referer) {
+          $access_info .= "same--$referer"
+        }
+        else {
+          $access_info .= "different--$referer"
+        }
+      }
+      else {
+        $access_info .= 'notfound--notfound'
+      }
+
+      warn "ExporterEvent--$access_info--" . join('-', ($o, $hub->param('_format'))) . '-' . join(',',sort keys %$params);
       $outputs->{$o}();
     }
   }
@@ -811,9 +827,13 @@ sub feature {
   else {
     @mapping_result = qw(seqid source type start end score strand phase);
   }
+  my $source = $feature->can('source_tag') ? $feature->source_tag  : $feature->can('source') ? $feature->source : 'Ensembl';
+  if (ref($source) eq 'Bio::EnsEMBL::Variation::Source') {
+    $source = $source->name;
+  }
   %vals = (%vals, (
      type   => $type || ($feature->can('primary_tag') ? $feature->primary_tag : 'sequence_feature'),
-     source => $feature->can('source_tag') ? $feature->source_tag  : $feature->can('source') ? $feature->source : 'Ensembl',
+     source => $source,
      score  => $feature->can('score') ? $feature->score : '.',
      phase  => '.'
    ));   

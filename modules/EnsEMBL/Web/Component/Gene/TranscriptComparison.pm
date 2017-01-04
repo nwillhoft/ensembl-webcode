@@ -62,7 +62,7 @@ sub initialize_new {
   }
   
   my ($sequence, $markup) = $self->get_sequence_data($config);
-  $self->view->markup_new($sequence,$markup,$config);
+  $self->view->markup($sequence,$markup,$config);
 
   my $view = $self->view;
 
@@ -122,7 +122,7 @@ sub content_sub_slice {
 
   $self->id('');
   
-  return $self->build_sequence_new($sequence, $config,1);
+  return $self->build_sequence($sequence, $config,1);
 }
 
 sub selected_transcripts {

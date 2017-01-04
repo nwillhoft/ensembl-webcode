@@ -35,6 +35,7 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
     this.altKeyDragging     = false;
     this.allowHighlight     = !!(window.location.pathname.match(/\/Location\//));
     this.locationMarkingArea = false;
+    this.trackHighlightInfo  = {};
     
     function resetOffset() {
       delete this.imgOffset;
@@ -59,6 +60,7 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
     this.base();
     
     this.imageConfig        = $('input.image_config', this.el).val();
+    this.viewConfig         = $('input.view_config', this.el).val();
     this.lastImage          = Ensembl.images.total > 1 && this.el.parents('.image_panel')[0] === Ensembl.images.last;
     this.hashChangeReload   = this.lastImage || $('.hash_change_reload', this.el).length;
     this.zMenus             = {};
@@ -91,7 +93,8 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
     this.initSelector();
     this.highlightLastUploadedUserDataTrack();
     this.markLocation(Ensembl.markedLocation);
-    
+    this.initTrackHighlight();
+
     if (!this.vertical) {
       this.makeResizable();
     }
@@ -174,12 +177,13 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
         url: this.href,
         type: 'post',
         success: function() {
-          Ensembl.EventManager.triggerSpecific('resetConfig', 'modal_config_' + this.id.toLowerCase());
+          Ensembl.EventManager.trigger('resetConfig');
           Ensembl.EventManager.trigger('resetMessage');
           this.getContent();
         },
         data: {
-          image_config: panel.imageConfig
+          image_config: panel.imageConfig,
+          view_config: panel.viewConfig
         }
       });
     });
@@ -204,6 +208,25 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
       this.panningAllowed = true;
       this.setPanning();
     }
+  },
+
+  initTrackHighlight: function() {
+    var panel = this;
+    panel.trackHighlightInfo = {};
+    $('li', this.elLk.boundaries).each(function () {
+      var key = this.className.replace(/_highlight_on|track_highlight|hover/g, '');
+      key = $.trim(key).replace(/\s+/g, '.');
+      panel.trackHighlightInfo[key] = {
+        coords: {
+                  x: $(this).position().left,
+                  y: $(this).position().top,
+                  h: $(this).height(),
+                  w: $(this).width()
+                }
+      }
+
+      panel.trackHighlightInfo[key].hl = ($(this).hasClass('_highlight_on')) ? 1 : 0 ;
+    })
   },
 
   hashChange: function (r) {
@@ -467,9 +490,6 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
         $(this).find('._dyna_load').removeClass('_dyna_load').dynaLoad();
         var associated_li = panel.elLk.boundaries.find('.' + $(this).find('.hl-icon-highlight').data('highlightTrack'))
         associated_li.addClass('hover');
-        if(associated_li.hasClass('_new_userdata')) {
-          panel.removeUserDataHighlight();
-        }
       },
       mouseleave: function () {
         panel.elLk.boundaries.find('.' + $(this).find('.hl-icon-highlight').data('highlightTrack')).removeClass('hover');
@@ -484,9 +504,11 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
         }
         // show/hide hover label
         $(this).find('.hover_label')
-               .toggle()
+               .toggle().off()
                .click(function(e){
-                  e.stopPropagation && e.stopPropagation();
+                  if (e.target.nodeName !== "A" || $(e.target).hasClass('config')) {
+                    e.stopPropagation();
+                  }
                });
 
        $(document).off('.hoverMenuRemove').on('click.hoverMenuRemove', function(e) {
@@ -509,7 +531,7 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
           e.stopPropagation(); // aviod triggering click on parent _label_layer
           $(document).off('.hoverMenuRemove');
         }
-      });
+      }).externalLinks();
 
 
     // apply css positions to the hover layers
@@ -591,9 +613,7 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
 
       // On highlight icon click toggle highlight
       $(this).find('.hl-icon-highlight').on('click', function(e) {
-        var highlight_class = 'li.' + $(this).data('highlightTrack');
-        var track_element = $($(panel.elLk.boundaries).find(highlight_class));
-        panel.toggleHighlight(track_element);
+        panel.toggleHighlight($(this).data('highlightTrack'));
         // highlight the track highlight icon on all the highlighted tracks (f/r generally)
         $('.hover_label.' + $(this).data('highlightTrack')).find('.hl-icon-highlight').toggleClass('selected');
       });
@@ -611,55 +631,74 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
     });
   },
 
-  toggleHighlight: function(element) {
-    $(element) && $(element).toggleClass('track_highlight _highlight_on');
+  toggleHighlight: function(highlight_class) {
+    var panel = this;
+    var track_highlight_class = 'li.' + highlight_class;
+    var track_element = $($(this.elLk.boundaries).find(track_highlight_class));
+
+    $(track_element) && $(track_element).toggleClass('track_highlight _highlight_on');
+    if ($(track_element).hasClass('_highlight_on')) {
+      $(track_element).each(function(i, tr) {
+        panel.trackHighlightInfo[highlight_class].hl = 1
+      })
+    }
+    else {
+      this.trackHighlightInfo[highlight_class].hl = 0;
+    }
+    this.updateExportButton({hl : 1});
   },
 
   highlightLastUploadedUserDataTrack: function() {
     var panel = this;
+    var tracks = [];
+
+    this.elLk.boundaries.find('li._new_userdata.usertrack_highlight').on('mouseover', function() {
+      panel.removeUserDataHighlight();
+    })
+
+    // Traverse li to find adjacent tracks to add group border
     var count = 0;
-    var adjacent_tracks = [];
     this.elLk.boundaries.children().each(function (i) {
       var li  = $(this);
       if ($(this).hasClass('_new_userdata')) {
-        adjacent_tracks.push(li);
+        tracks.push(li);
         count++;
       }
       else {
-        // If there are more than one tracks adjacent to each other
-        if(count > 1 && adjacent_tracks.length > 1) {
-          $(adjacent_tracks).each(function(i, li_element) {
-            // Top track
-            if (i == 0) {
-              $(li_element).addClass('usertrack_highlight_border_top usertrack_highlight_border_left usertrack_highlight_border_right');
-            }
-            // Middle tracks
-            else if (i !== adjacent_tracks.length - 1 ) {
-              $(li_element).addClass('usertrack_highlight_border_left usertrack_highlight_border_right');
-            }
-            // Bottom track
-            else {
-              $(li_element).addClass('usertrack_highlight_border_bottom usertrack_highlight_border_left usertrack_highlight_border_right');
-            }
-
-            $(li_element).on('mouseenter', function() {
-              panel.removeUserDataHighlight();
-            })
-          })
-        }
-        else {
-          // Single tracks
-          adjacent_tracks.length == 1 &&
-            $(adjacent_tracks[0]).addClass('usertrack_highlight_border_top usertrack_highlight_border_bottom usertrack_highlight_border_left usertrack_highlight_border_right')
-                                 .on('mouseenter', function() {
-                                    panel.removeUserDataHighlight();
-                                 })
-        }
         // Reset array so that you get a new set of tracks
-        adjacent_tracks = [];
-        count = 0;
+        panel.addHighlightClasses(tracks);
+        tracks = [];
+        count++;
       }
+      // In case last li track is a _new_userdata (which misses the else part above)
+      (tracks.length && panel.elLk.boundaries.children().length === count) && panel.addHighlightClasses(tracks)
     });
+
+  },
+
+  addHighlightClasses: function(tracks) {
+    // If there are more than one tracks adjacent to each other
+    if(tracks.length > 1) {
+      $(tracks).each(function(i, li_element) {
+        // Top track
+        if (i == 0) {
+          $(li_element).addClass('usertrack_highlight_border_top usertrack_highlight_border_left usertrack_highlight_border_right');
+        }
+        // Middle tracks
+        else if (i !== tracks.length - 1 ) {
+          $(li_element).addClass('usertrack_highlight_border_left usertrack_highlight_border_right');
+        }
+        // Bottom track
+        else {
+          $(li_element).addClass('usertrack_highlight_border_bottom usertrack_highlight_border_left usertrack_highlight_border_right');
+        }
+      })
+    }
+    else {
+      // Single tracks
+      tracks.length == 1 &&
+        $(tracks[0]).addClass('usertrack_highlight_border_top usertrack_highlight_border_bottom usertrack_highlight_border_left usertrack_highlight_border_right');
+    }
 
   },
 
@@ -698,6 +737,9 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
       success: function (json) {
         if (json.updated) {
           this.panel.changeConfiguration(config, this.track, this.update);
+          // Update trackHighlightInfo object and update export button
+          this.panel.initTrackHighlight();
+          this.panel.updateExportButton();
         }
       }
     });
@@ -875,8 +917,8 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
 
   sortUpdate: function(e, ui) {
 
-    var prev  = (ui.item.prev().prop('className') || '').replace(' ', '.');
-    var track = ui.item.prop('className').replace(' ', '.');
+    var prev  = $.trim((ui.item.prev().prop('className') || '')).replace(' ', '.');
+    var track = $.trim(ui.item.prop('className')).replace(' ', '.');
 
     Ensembl.EventManager.triggerSpecific('changeTrackOrder', 'modal_config_' + this.id.toLowerCase(), track, prev);
 
@@ -1512,18 +1554,30 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
     this.updateExportButton();
   },
 
-  updateExportButton: function() {
-    var extra = this.getExtraExportParam();
+  updateExportButton: function(args) {
+    var extra = this.getExtraExportParam(args);
 
     extra = $.isEmptyObject(extra) ? false : encodeURIComponent(JSON.stringify(extra));
 
     this.elLk.exportButton.attr('href', function() {
-      return Ensembl.updateURL({extra: extra}, this.href);
+      return Ensembl.updateURL({extra: extra, decodeURL: 1}, this.href);
     });
   },
 
-  getExtraExportParam: function () {
+  getExtraExportParam: function (args) {
     var extra = {};
+
+    var flag = 0;
+    $.each(this.trackHighlightInfo, function(tr_id, hash) {
+      if (hash.hl) {
+        flag = 1;
+        return;
+      }
+    })
+
+    if (flag) {
+      extra.trackHighlightInfo = this.trackHighlightInfo;
+    }
 
     if (!$.isEmptyObject(this.boxCoords)) {
       extra.boxes = this.boxCoords;
@@ -1546,7 +1600,6 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
         delete extra.mark;
       }
     }
-
     return extra;
   },
 

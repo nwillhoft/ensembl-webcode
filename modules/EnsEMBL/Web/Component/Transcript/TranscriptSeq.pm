@@ -378,7 +378,7 @@ sub initialize_new {
   # XXX hack to set principal
   $sequences->[1]->principal(1) if @$sequences>1 and $config->{'snp_display'};
 
-  $self->view->markup_new($sequences,$markup,$config);
+  $self->view->markup($sequences,$markup,$config);
 
   $view->legend->expect('variants') if ($config->{'snp_display'}||'off') ne 'off';
 
@@ -389,7 +389,7 @@ sub content {
   my $self = shift;
   my ($sequences, $config) = $self->initialize_new;
 
-  return  $self->describe_filter($config).$self->build_sequence_new($sequences, $config);
+  return  $self->describe_filter($config).$self->build_sequence($sequences, $config);
 }
 
 sub export_options { return {'action' => 'Transcript'}; }

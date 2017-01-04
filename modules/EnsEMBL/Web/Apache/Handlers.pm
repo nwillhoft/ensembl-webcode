@@ -1,3 +1,4 @@
+
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
@@ -95,8 +96,13 @@ sub get_redirect_uri {
   }
 
   ## Trackhub short URL
-  if ($uri =~ m|^/trackhub\?|i) {
-    return $uri = s/trackhub/UserData\/TrackHubRedirect/r;
+  if ($uri =~ /^\/Trackhub(\/|\?|$)/i) {
+    return $uri =~ s/trackhub/UserData\/TrackHubRedirect/ri;
+  }
+
+  ## VEP shortlink
+  if ($uri =~ m|^/vep$|) {
+    return '/info/docs/tools/vep/index.html';
   }
 
   ## For stable id URL (eg. /id/ENSG000000nnnnnn) or malformed Gene URL with g param
@@ -371,7 +377,7 @@ sub handler {
   my $path_seg  = [ grep { $_ ne '' } split '/', $path ];
 
   # other species-like path segments
-  if (!$species && grep /$path_seg->[0]/, qw(Multi common)) {
+  if (!$species && $path_seg->[0] && grep $_ eq $path_seg->[0], qw(Multi common)) {
     $species = shift @$path_seg;
   }
 

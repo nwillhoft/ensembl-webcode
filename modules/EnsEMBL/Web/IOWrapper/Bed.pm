@@ -99,8 +99,8 @@ sub create_hash {
                         };
   my $colour = $self->set_colour($colour_params);
 
-  my $id = $self->parser->can('get_id') ? $self->parser->get_id
-            : $self->parser->can('get_name') ? $self->parser->get_name : undef;
+  my $label = $self->parser->can('get_name') ? $self->parser->get_name : '';
+  my $id    = $self->parser->get_id || $label;
 
   my $drawn_strand = $metadata->{'drawn_strand'} || $strand;
   my $href = $self->href({
@@ -120,7 +120,7 @@ sub create_hash {
     'seq_region'    => $seqname,
     'strand'        => $strand,
     'score'         => $score,
-    'label'         => $self->parser->get_name,
+    'label'         => $label,
     'colour'        => $colour,
     'href'          => $href,
   };
@@ -193,6 +193,7 @@ sub create_structure {
   return unless ($block_count || ($thick_start && $thick_end));
 
   my $structure = [];
+  my ($has_utr5, $has_utr3);
 
   ## First, create the blocks
   if ($self->parser->get_blockCount) {
@@ -221,6 +222,9 @@ sub create_structure {
     $thick_end    = 0;
   }
   else {
+    ## Do we have any UTR?
+    $has_utr5 = 1 if ($thick_start && $thick_start > $feature_start);
+    $has_utr3 = 1 if ($thick_end && $thick_end < $feature_end);
     ## Adjust to make relative to slice 
     $thick_start -= $slice_start;
     $thick_end   -= $slice_start;
@@ -241,16 +245,16 @@ sub create_structure {
         if ($thick_start > $end) {
           $block->{'non_coding'} = 1; 
         }
-        else {
-          $block->{'utr_5'} = $thick_start - $start;
+        elsif ($has_utr5) {
+          $block->{'utr_5'} = $thick_start;
         }
       }
       elsif ($thick_end && $thick_end < $end) { ## 3' UTR
         if ($thick_end < $start) {
           $block->{'non_coding'} = 1; 
         }
-        else {
-          $block->{'utr_3'} = $thick_end - $start;
+        elsif ($has_utr3) {
+          $block->{'utr_3'} = $thick_end; 
         }
       }
     }

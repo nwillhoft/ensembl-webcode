@@ -787,11 +787,7 @@ sub _summarise_funcgen_db {
 # * Oligos
 #
   $t_aref = $dbh->selectall_arrayref(
-    'select a.vendor, a.name, a.array_id  
-       from array a, array_chip c, status s, status_name sn where  sn.name="DISPLAYABLE" 
-       and sn.status_name_id=s.status_name_id and s.table_name="array" and s.table_id=a.array_id 
-       and a.array_id=c.array_id
-    '       
+    'select vendor, name, array_id from array'
   );
   my $sth = $dbh->prepare(
     'select pf.probe_feature_id
@@ -853,31 +849,24 @@ sub _summarise_funcgen_db {
 
   ## Methylation tracks - now in files
   my $m_aref = $dbh->selectall_arrayref(qq(
-        select 
-          eff.name, 
-          a.description, 
-          epigenome.name, 
-          g.name 
-        from external_feature_file eff 
-          join analysis_description a on (a.analysis_id = eff.analysis_id) 
-          join feature_type ft using (feature_type_id) 
-          join epigenome using (epigenome_id) 
-          join experiment using (experiment_id) 
-          join experimental_group g using (experimental_group_id) 
-        where ft.name = '5mC';
+    select
+      external_feature_file.name,
+      analysis_description.description
+    from
+      external_feature_file
+      join analysis_description using (analysis_id)
+      join feature_type ft using (feature_type_id)
+    where ft.name = '5mC';
     )
   );
 
   foreach (@$m_aref) {
-    my ($name, $description, $epigenome, $group) = @$_;
+    my ($name, $description, $epigenome) = @$_;
 
-    my $id   = sprintf('%s_%s', $epigenome, $group);
-    my $desc = "$epigenome cell line: $description";
-    $desc .= " ($group group)." if $group;
     $self->db_details($db_name)->{'tables'}{'methylation'}{$name} = {
-                                                                    name        => $name,
-                                                                    description => $desc,
-                                                                  };
+      name        => $name,
+      description => $description,
+    };
   }
 
   ## New CRISPR tracks
@@ -1050,8 +1039,6 @@ sub _build_compara_default_aligns {
       join species_set_header as ssh on mlss.species_set_id = ssh.species_set_id
      where ml.type = ?
        and ssh.name = ?
-       and ml.method_link_id != 22
-       and ml.method_link_id != 23
   ));
   my @defaults;
   my $cda_conf = $self->full_tree->{'MULTI'}{'COMPARA_DEFAULT_ALIGNMENTS'};
@@ -1080,9 +1067,6 @@ sub _build_compara_mlss {
         on mlss.species_set_id = ss.species_set_id
       join method_link as ml
         on mlss.method_link_id = ml.method_link_id
-      where
-           ml.method_link_id != 22
-       and ml.method_link_id != 23
   ));
   $sth->execute;
   my %mlss;
@@ -1110,9 +1094,7 @@ sub _summarise_compara_db {
       where mls.species_set_id = ss.species_set_id
         and ss.genome_db_id = gd.genome_db_id 
         and mls.method_link_id = ml.method_link_id
-        and ml.type LIKE "LASTZ%"
-        and ml.method_link_id != 22
-        and ml.method_link_id != 23
+        and ml.type LIKE "LASTZ_PATCH"
       group by mls.method_link_species_set_id, mls.method_link_id
       having count = 1
   ');
@@ -1131,8 +1113,6 @@ sub _summarise_compara_db {
         mlss.species_set_id = ss.species_set_id and 
         ss.genome_db_id = gd.genome_db_id and
         (ml.class like "GenomicAlign%" or ml.class like "%.constrained_element" or ml.class = "ConservationScore.conservation_score")
-        and ml.method_link_id != 22
-        and ml.method_link_id != 23
   ');
   
   my $constrained_elements = {};
@@ -1178,7 +1158,7 @@ sub _summarise_compara_db {
     }
   }
 
-  $res_aref = $dbh->selectall_arrayref('SELECT method_link_species_set_id, value FROM method_link_species_set_tag JOIN method_link_species_set USING (method_link_species_set_id) JOIN method_link USING (method_link_id) WHERE type LIKE "%CONSERVATION\_SCORE" AND tag = "msa_mlss_id" and method_link_id != 22 and method_link_id != 23');
+  $res_aref = $dbh->selectall_arrayref('SELECT method_link_species_set_id, value FROM method_link_species_set_tag JOIN method_link_species_set USING (method_link_species_set_id) JOIN method_link USING (method_link_id) WHERE type LIKE "%CONSERVATION\_SCORE" AND tag = "msa_mlss_id"');
   
   foreach my $row (@$res_aref) {
     my ($conservation_score_id, $alignment_id) = ($row->[0], $row->[1]);
@@ -1211,8 +1191,6 @@ sub _summarise_compara_db {
        mls2.species_set_id = ss2.species_set_id and
        ss1.genome_db_id = gd1.genome_db_id and
        ss2.genome_db_id = gd2.genome_db_id
-       and ml.method_link_id != 22
-       and ml.method_link_id != 23
   ');
   
   ## That's the end of the compara region munging!
@@ -1224,8 +1202,6 @@ sub _summarise_compara_db {
         ss.genome_db_id = gd.genome_db_id and
         mls.method_link_id = ml.method_link_id and
         ml.type not like '%PARALOGUES'
-        and ml.method_link_id != 22
-        and ml.method_link_id != 23
       group by mls.method_link_species_set_id, mls.method_link_id
       having count = 1
   });
@@ -1342,8 +1318,6 @@ sub _summarise_compara_alignments {
     select mlss.method_link_species_set_id, ml.type, ml.class, mlss.name
       from method_link_species_set mlss, method_link ml
       where mlss.method_link_id = ml.method_link_id
-      and ml.method_link_id != 22
-      and ml.method_link_id != 23
   ';
   
   $sth = $dbh->prepare($q);

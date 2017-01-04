@@ -56,7 +56,7 @@ sub content {
 
   my ($alert_box, $error) = $self->check_for_align_problems({
                     'align' => $align,
-                    'species' => $object->species,
+                    'species' => $hub->species_defs->IS_STRAIN_OF ? ucfirst $hub->species_defs->SPECIES_PRODUCTION_NAME($object->species) : $object->species,
                   });
   return $alert_box if $error;
   my ($warnings, $image_link);
@@ -210,7 +210,7 @@ sub content_sub_slice {
   my ($sequence, $config) = $self->_get_sequence(@_);
   my $html = '';
   $html .= $self->describe_filter($config) unless $self->param('follow');
-  $html .= $self->build_sequence_new($sequence, $config,1);
+  $html .= $self->build_sequence($sequence, $config,1);
   return $html;
 }
 
@@ -279,7 +279,7 @@ sub _get_sequence {
     $seq->name($slice->{'display_name'} || $slice->{'name'});
   }
 
-  $view->markup_new($sequence,$markup,$config);
+  $view->markup($sequence,$markup,$config);
   
   # Only if this IS NOT a sub slice - print the key and the slice list
   my $template = '';
@@ -563,7 +563,7 @@ sub _get_target_slice_table {
     my $slice_length = ($ref_end-$ref_start+1);
 
     my $align_params = "$align";
-    $align_params .= "--" . $non_ref_ga->genome_db->name . "--" . $non_ref_ga->dnafrag->name . ":$non_ref_start-$non_ref_end" if ($non_ref_ga);
+    $align_params .= "--" . $hub->species_defs->production_name_mapping($non_ref_ga->genome_db->name) . "--" . $non_ref_ga->dnafrag->name . ":$non_ref_start-$non_ref_end" if ($non_ref_ga);
 
     my %url_params = (
                      species => $ref_species,

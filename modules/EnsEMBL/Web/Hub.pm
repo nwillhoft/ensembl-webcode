@@ -92,6 +92,7 @@ sub delete_param      { shift->input->delete(@_); }
 
 sub users_available         { 0 } # overridden in user plugin
 sub users_plugin_available  { 0 } # overridden in user plugin
+sub get_shared_config       { 0 } # overridden in user plugin
 
 sub object_types    { return $_[0]{'_object_types'} ||= { map { $_->[0] => $_->[1] } @{$_[0]->controller->object_params || []} }; }
 sub ordered_objects { return $_[0]{'_ordered_objs'} ||= [ map $_->[0], @{$_[0]->controller->object_params || []} ]; }
@@ -265,7 +266,23 @@ sub core_object {
   if($name eq 'parameters') { ## TODO - replace the usage with core_params method
     return $self->{'core_params'};
   }
-  return $self->{'builder'} ? $self->{'builder'}->object(ucfirst $name) : undef;
+
+  my $object;
+  if ($self->{'builder'}) {
+    $object = $self->{'builder'}->object(ucfirst $name); 
+  }
+  return $object;
+}
+
+sub create_object {
+  my $self = shift;
+  my $name = shift;
+
+  my $object;
+  if ($self->{'builder'}) {
+    $object = $self->{'builder'}->object(ucfirst $name) || $self->{'builder'}->create_object(ucfirst $name);
+  }
+  return $object;
 }
 
 sub set_core_params {
@@ -361,6 +378,17 @@ sub url {
   my $flag          = shift;
   my $all_params    = shift;
 
+  ## Check for illegal characters in the species name, in case
+  ## someone has used a common name with weird stuff in it 
+  ## (e.g. mouse strain names with slashes)
+  my $illegal = '\/|\?|=';
+  if ($params->{'species'} && $params->{'species'} =~ /$illegal/) {
+    warn sprintf '######## ILLEGAL SPECIES NAME %s IN URL ########', $params->{'species'};
+    ## Stripping these characters might still produce a 404,
+    ## but at least it won't be horribly broken
+    $params->{'species'} =~ s/$illegal/_/g;
+  }
+
   my $species       = exists $params->{'species'}       ? $params->{'species'}      : $self->species;
   my $type          = exists $params->{'type'}          ? $params->{'type'}         : $self->type;
   my $action        = exists $params->{'action'}        ? $params->{'action'}       : $self->action;
@@ -440,7 +468,12 @@ sub url {
 sub get_permanent_url {
   ## Get the permanent url for the current or given url
   ## @param URL (string or hashref as expected by self->url method) (optional - takes current url as default)
-  my ($self, $url) = @_;
+  ## @param Hashref with following keys:
+  ##  - ignore_archive Flag will on will not create a archive permalink
+  ##  - allow_redirect Flag if on will not add params that prevent mirror/mobile redirect
+  my ($self, $url, $options) = @_;
+
+  $options ||= {};
 
   my $sd = $self->species_defs;
 
@@ -448,8 +481,15 @@ sub get_permanent_url {
   $url  ||= $self->current_url;
   $url    = $self->url($url) if ref $url;
 
+  # remove time, redirect and mobileredirect params
+  $url =~ s/(\;|\&)*(time|redirect|mobileredirect)=[^\;\&]+(\;|\&)*/$1 && $3 ? q(;) : q()/eg;
+  $url =~ s/\;$//;
+
+  # add params to prevent redirect
+  $url .= ($url =~ /\?/ ? ';' : '?').'redirect=no;mobileredirect=no' unless $options->{'allow_redirect'};
+
   return sprintf '%s/%s',
-    $self->_get_permanent_url_base =~ s/\/*$//r,
+    ($options->{'ignore_archive'} ? $sd->ENSEMBL_BASE_URL : $self->_get_permanent_url_base) =~ s/\/*$//r,
     $url =~ s/^\/*//r;
 }
 
@@ -459,9 +499,10 @@ sub _get_permanent_url_base {
   my $self  = shift;
   my $sd    = $self->species_defs;
 
-  return $sd->ARCHIVE_BASE_DOMAIN
+  return lc($sd->ARCHIVE_BASE_DOMAIN
     ? sprintf('%s://%s.%s', $sd->ENSEMBL_PROTOCOL, $sd->ARCHIVE_VERSION, $sd->ARCHIVE_BASE_DOMAIN)
-    : $sd->ENSEMBL_BASE_URL;
+    : $sd->ENSEMBL_BASE_URL
+  );
 }
 
 sub param {
@@ -1007,18 +1048,18 @@ sub order_species_by_clade { # TODO - move to EnsEMBL::Web::Document::HTML::Comp
 
   my $favourites    = $self->get_favourite_species;
   if (scalar @$favourites) {
-    push @final_sets, ['Favourite species', [map {encode_entities($stn_by_name{lc $_})} @$favourites]];
+    my @allowed_production_names = grep {$stn_by_name{$_}} map {$species_defs->get_config($_, 'SPECIES_PRODUCTION_NAME')} @$favourites;
+    push @final_sets, ['Favourite species', [map {encode_entities($stn_by_name{$_})} @allowed_production_names]] if @allowed_production_names;
   }
 
   ## Output in taxonomic groups, ordered by common name
   foreach my $group_name (@group_order) {
-    my $species_list = $phylo_tree{$group_name};
-
-    if ($species_list && ref $species_list eq 'ARRAY' && scalar @$species_list) {
+      next unless exists $phylo_tree{$group_name};
+      my $species_list = $phylo_tree{$group_name};
       my $name_to_use = ($group_name eq 'no_group') ? (scalar(@group_order) > 1 ? 'Other species' : 'All species') : encode_entities($group_name);
       my @sorted_by_common = sort { $species_info->{$a}->{'common'} cmp $species_info->{$b}->{'common'} } @$species_list;
-      push @final_sets, [$name_to_use, [map {encode_entities($stn_by_name{lc $_})} @sorted_by_common]];
-    }
+      my @allowed_production_names = grep {$stn_by_name{$_}} map {$species_defs->get_config($_, 'SPECIES_PRODUCTION_NAME')} @sorted_by_common;
+      push @final_sets, [$name_to_use, [map {encode_entities($stn_by_name{$_})} @allowed_production_names]] if @allowed_production_names;
   }
 
   return \@final_sets;

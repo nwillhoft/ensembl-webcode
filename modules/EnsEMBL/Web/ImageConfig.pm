@@ -587,6 +587,7 @@ sub menus {
     pairwise_tblat      => [ 'Translated blat alignments', 'compara' ],
     multiple_align      => [ 'Multiple alignments',        'compara' ],
     conservation        => [ 'Conservation regions',       'compara' ],
+    pairwise_cactus_hal_pw => [ 'Progressive cactus pairwise','compara' ],
     synteny             => 'Synteny',
 
     # Other features
@@ -757,6 +758,80 @@ sub glyphset_tracks {
   }
 
   return $self->{'_glyphset_tracks'};
+}
+
+sub get_shareable_settings {
+  ## @override
+  ## Add custom uplaoded/url tracks to the shareable data
+  my $self            = shift;
+  my $share_settings  = $self->SUPER::get_shareable_settings;
+  my $hub             = $self->hub;
+  my $record_owners   = {'user' => $hub->user, 'session' => $hub->session};
+  my @data_menus      = $self->get_shareable_nodes;
+
+  my (%share_data, %done_record);
+
+  foreach my $data_menu (@data_menus) {
+    my $linked_record = $data_menu->get_data('linked_record');
+
+    foreach my $track (@{$data_menu->get_all_nodes}) {
+      $linked_record ||= $track->get_data('linked_record');
+
+      next unless $linked_record;
+
+      # if track is turned off the user, we can skip sharing the linked user data record
+      if ($track->get('display') eq 'off') {
+
+        # user has set track display 'off' - if the default is also 'off', it would be a redundant setting to share
+        delete $share_settings->{'nodes'}{$track->id} if $share_settings->{'nodes'} && $track->get_data('display') eq 'off';
+
+      } else {
+
+        my $key = join '-', $linked_record->{'record_type'}, $linked_record->{'type'}, $linked_record->{'code'};
+
+        next if $done_record{$key};
+        $done_record{$key} = 1;
+
+        $key = md5_hex($key);
+
+        my $record = $record_owners->{$linked_record->{'record_type'}}->record({'type' => $linked_record->{'type'}, 'code' => $linked_record->{'code'}});
+        if ($record) {
+          $share_data{$key} = $record->data->raw;
+          $share_data{$key}{'type'}   = $record->type;
+          $share_data{$key}{'code'}   = $record->code;
+          $share_data{$key}{'shared'} = 1;
+        }
+      }
+    }
+  }
+
+  $share_settings->{'user_data'} = \%share_data if keys %share_data;
+
+  return $share_settings;
+}
+
+sub receive_shared_settings {
+  ## @override
+  ## Adds custom track list
+  my ($self, $settings) = @_;
+
+  my $session   = $self->hub->session;
+  my $user_data = delete $settings->{'user_data'};
+
+  $self->hub->session->set_record_data($user_data->{$_}) for keys %{$user_data || {}};
+
+  return $self->SUPER::receive_shared_settings($settings);
+}
+
+sub get_shareable_nodes {
+  ## Gets the nodes for user data that can be shared with other users
+  ## @return List of nodes that contain user data
+  my $self  = shift;
+  my @nodes = ($self->get_node('user_data') || ());
+
+  push @nodes, grep $_->get_data('trackhub_menu'), $self->tree->nodes if $self->get_parameter('can_trackhubs');
+
+  return @nodes;
 }
 
 sub cache {

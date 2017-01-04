@@ -49,8 +49,8 @@ sub content {
 
   return $self->_error('Unknown alignment', '<p>The alignment you have selected does not exist in the current database.</p>') unless $align_details;
   
-  my $primary_species = $hub->species;
-  
+  my $primary_species = $species_defs->IS_STRAIN_OF ? ucfirst $species_defs->SPECIES_PRODUCTION_NAME($hub->species) : $hub->species;
+
   if (!exists $align_details->{'species'}->{$primary_species}) {
     return $self->_error('Unknown alignment', sprintf(
       '<p>%s is not part of the %s alignment in the database.</p>', 
@@ -91,7 +91,7 @@ sub content {
     my $asb = $image_config->get_node('alignscalebar');
     $asb->set_data('caption', $panel_caption);
     $asb->set_data('caption_position', 'bottom');
-    $asb->set_data('caption_img',"f:24\@$caption_img_offset:".$_->{'name'});
+    $asb->set_data('caption_img',"f:24\@$caption_img_offset:".$species_defs->production_name_mapping($_->{'name'}));
     $asb->set_data('caption_height',$caption_height);
     $caption_img_offset = -20;
     $caption_height = 28;

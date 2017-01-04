@@ -22,6 +22,10 @@ package EnsEMBL::Web::ImageConfig::contigviewbottom;
 use strict;
 use warnings;
 
+use Digest::MD5 qw(md5_hex);
+use URI::Escape qw(uri_unescape);
+use HTML::Entities qw(encode_entities);
+
 use EnsEMBL::Web::Command::UserData::AddFile;
 
 use parent qw(EnsEMBL::Web::ImageConfig);
@@ -54,7 +58,13 @@ sub update_from_url {
   my $session         = $hub->session;
   my $species         = $self->species;
   my $species_defs    = $self->species_defs;
-  my @values          = split(/,/, grep($_, delete $params->{'attach'}, delete $params->{$self->type}) || ''); # delete params to avoid doing it again when calling SUPER method
+
+  my $attach = !!$params->{'attach'};
+  my @values = split(/,/, $params->{'attach'}); 
+  push @values, split(/,/, $params->{$self->type}); 
+  # delete params to avoid doing it again when calling SUPER method
+  delete $params->{$self->type};
+  delete $params->{'attach'};
 
   # if param name is 'trackhub'
   push @values, $params->{'trackhub'} || ();
@@ -66,7 +76,7 @@ sub update_from_url {
 
   foreach my $v (@values) {
     my $format = $params->{'format'};
-    my ($url, $renderer, $attach);
+    my ($url, $renderer);
 
     if ($v =~ /^url/) {
       $v =~ s/^url://;
@@ -74,7 +84,7 @@ sub update_from_url {
       ($url, $renderer) = split /=/, $v;
     }
 
-    if ($attach || $params->{'attach'}) {
+    if ($attach) {
       ## Backwards compatibility with 'contigviewbottom=url:http...'-type parameters
       ## as well as new 'attach=http...' parameter
       my $p = uri_unescape($url);
@@ -276,27 +286,6 @@ sub init_cacheable {
   );
 
   $self->add_track('decorations', 'gc_plot', '%GC', 'gcplot', { display => 'normal',  strand => 'r', description => 'Shows percentage of Gs & Cs in region', sortable => 1 });
-
-  my $gencode_version = $self->hub->species_defs->GENCODE_VERSION ? $self->hub->species_defs->GENCODE_VERSION : '';
-  $self->add_track('transcript', 'gencode', "Basic Gene Annotations from $gencode_version", '_gencode', {
-      labelcaption => "Genes (Basic set from $gencode_version)",
-      display     => 'off',
-      description => 'The GENCODE set is the gene set for human and mouse. GENCODE Basic is a subset of representative transcripts (splice variants).',
-      sortable    => 1,
-      colours     => $self->species_defs->colour('gene'),
-      label_key  => '[biotype]',
-      logic_names => ['proj_ensembl',  'proj_ncrna', 'proj_havana_ig_gene', 'havana_ig_gene', 'ensembl_havana_ig_gene', 'proj_ensembl_havana_lincrna', 'proj_havana', 'ensembl', 'mt_genbank_import', 'ensembl_havana_lincrna', 'proj_ensembl_havana_ig_gene', 'ncrna', 'assembly_patch_ensembl', 'ensembl_havana_gene', 'ensembl_lincrna', 'proj_ensembl_havana_gene', 'havana'],
-      renderers   =>  [
-        'off',                     'Off',
-        'gene_nolabel',            'No exon structure without labels',
-        'gene_label',              'No exon structure with labels',
-        'transcript_nolabel',      'Expanded without labels',
-        'transcript_label',        'Expanded with labels',
-        'collapsed_nolabel',       'Collapsed without labels',
-        'collapsed_label',         'Collapsed with labels',
-        'transcript_label_coding', 'Coding transcripts only (in coding genes)',
-      ],
-    }) if($gencode_version);
 
   if ($self->species_defs->ALTERNATIVE_ASSEMBLIES) {
     foreach my $alt_assembly (@{$self->species_defs->ALTERNATIVE_ASSEMBLIES}) {
