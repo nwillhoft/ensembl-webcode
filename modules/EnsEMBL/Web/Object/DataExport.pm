@@ -117,11 +117,11 @@ sub handle_download {
     }
   }
   else { 
-    $error =  ["Sorry, could not find download file $filename."]; 
+    $error =  ["Sorry, could not find download file $filename"]; 
   }
 
   if ($error) {
-    warn ">>> DOWNLOAD ERROR: @$error";
+    $self->handle_download_error($error);
   }
 }
 

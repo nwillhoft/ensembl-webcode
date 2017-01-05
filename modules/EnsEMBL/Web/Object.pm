@@ -559,6 +559,25 @@ sub build_features_into_sorted_groups {
   return [ map { $_->{'gabs'} } sort { $b->{'len'} <=> $a->{'len'} } values %$groups ];
 }
 
+sub handle_download_error {
+  my ($self, $error) = @_;
+  my $hub = $self->hub;
+ 
+  if ($error && ref($error) ne 'ARRAY') {
+    $error = [$error];
+  }
+ 
+  $hub->session->set_record_data({
+      type     => 'message',
+      code     => 'download_error',
+      message  => join ('<br>', @{$error||{}}),
+      function => '_error'
+  });
+
+  my $previous_page = $hub->referer->{'uri'};
+  $hub->redirect($previous_page); 
+}
+
 sub DEPRECATED {
   my @caller = caller(1);
   my $warn   = "$caller[3] is deprecated and will be removed in release 62. ";
