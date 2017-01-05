@@ -696,7 +696,6 @@ sub render_text {
       $translator = $tclass->new({'no_exception' => 1});
       $translators{$tclass} = $translator;
     }
-    #warn "... TRANSLATOR $translator";
     $writer->translator($translator);
 
     my $track_data = $glyphset->get_data;
@@ -707,8 +706,8 @@ sub render_text {
       foreach my $track (@$track_data) {
         foreach (@{$track->{'features'}}) {
           my ($line) = $writer->create_record($_);
+          #warn ">>> LINE $line";
           $output_file->write_line($line);
-          #$writer->write($_);
         }
       }
     }
