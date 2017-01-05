@@ -61,18 +61,49 @@ sub max_label_rows { return $_[0]->my_config('max_label_rows') || 2; }
 sub _get_data {
   my ($self) = @_;
 
-  my $hub = $self->{'config'}->hub;
-  return $hub->get_query('GlyphSet::Transcript')->go($self,{
-    species => $self->species,
-    pattern => $self->my_config('colour_key'),
-    shortlabels => $self->get_parameter('opt_shortlabels'),
-    label_key => $self->my_config('label_key'),
-    slice => $self->{'container'},
-    logic_names => [sort @{$self->my_config('logic_names')}],
-    db => $self->my_config('db'),
-    only_attrib => $self->only_attrib,
-    prediction => $self->prediction,
-  });
+  if ($self->{'display'} eq 'text') {
+    ## Don't use standard query, as it may be lacking information
+    ## we need for export
+    return $self->_get_export_data;
+  }
+  else {
+    my $hub = $self->{'config'}->hub;
+    return $hub->get_query('GlyphSet::Transcript')->go($self,{
+      species => $self->species,
+      pattern => $self->my_config('colour_key'),
+      shortlabels => $self->get_parameter('opt_shortlabels'),
+      label_key => $self->my_config('label_key'),
+      slice => $self->{'container'},
+      logic_names => [sort @{$self->my_config('logic_names')}],
+      db => $self->my_config('db'),
+      only_attrib => $self->only_attrib,
+      prediction => $self->prediction,
+    });
+  }
+}
+
+sub _get_export_data {
+  my $self = shift;
+
+  my $slice             = $self->{'container'};
+  my $db_alias          = $self->my_config('db');
+  my $analyses          = $self->my_config('logic_names');
+  my $load_transcripts  = $self->{'display'} =~ /collapsed/ ? 0 : 1;
+
+  my @genes             = map @{$slice->get_all_Genes($_, $db_alias, $load_transcripts)||[]}, @$analyses;
+  my $features          = [];
+
+  if ($load_transcripts) {
+    foreach my $g (@genes) {
+      my $transcripts = $g->get_all_Transcripts||[];
+      push @$features, @$transcripts;
+    }
+  }
+  else {
+    $features = \@genes;
+  }
+
+  return [{'features' => $features}];
 }
 
 sub features { # For genoverse
