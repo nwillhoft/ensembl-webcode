@@ -93,14 +93,16 @@ sub _get_export_data {
   my @genes             = map @{$slice->get_all_Genes($_, $db_alias, $load_transcripts)||[]}, @$analyses;
   my $features          = [];
 
-  if ($load_transcripts) {
-    foreach my $g (@genes) {
+  foreach my $g (sort {$a->start <=> $b->start} @genes) {
+    next unless $g->strand == $self->strand;
+
+    if ($load_transcripts) {
       my $transcripts = $g->get_all_Transcripts||[];
       push @$features, @$transcripts;
     }
-  }
-  else {
-    $features = \@genes;
+    else {
+      push @$features, $g;
+    }
   }
 
   return [{'features' => $features}];
