@@ -58,7 +58,7 @@ sub max_label_rows { return $_[0]->my_config('max_label_rows') || 2; }
 # MAIN METHODS                                        #
 #######################################################
 
-sub _get_data {
+sub get_data {
   my ($self) = @_;
 
   if ($self->{'display'} eq 'text') {
@@ -88,7 +88,7 @@ sub _get_export_data {
   my $slice             = $self->{'container'};
   my $db_alias          = $self->my_config('db');
   my $analyses          = $self->my_config('logic_names');
-  my $load_transcripts  = $self->{'display'} =~ /collapsed/ ? 0 : 1;
+  my $load_transcripts  = $self->{'my_config'}->get('display') =~ /collapsed/ ? 0 : 1;
 
   my @genes             = map @{$slice->get_all_Genes($_, $db_alias, $load_transcripts)||[]}, @$analyses;
   my $features          = [];
@@ -106,10 +106,15 @@ sub _get_export_data {
   return [{'features' => $features}];
 }
 
+sub translator_class { 
+  my $self = shift;
+  return $self->{'my_config'}->get('display') =~ /collapsed/ ? 'Gene' : 'Transcript'; 
+}
+
 sub features { # For genoverse
   my ($self,$display) = @_;
   
-  my $out = $_[0]->_get_data;
+  my $out = $_[0]->get_data;
   if(grep { $_ eq $display } qw(gene gene_label gene_nolabel collapsed collapsed_label collapsed_nolabel)) {
     $self->_prepare_collapsed($out);
   } else {
@@ -206,7 +211,7 @@ sub render_collapsed {
 
   return $self->render_text('transcript', 'collapsed') if $self->{'text_export'};
   
-  my $ggdraw = $self->_get_data;
+  my $ggdraw = $self->get_data;
   $self->_prepare_collapsed($ggdraw);
   my ($length,$draw_labels,$strand) = $self->_draw_prepare($ggdraw,$labels);
   $self->draw_collapsed_genes($length,$draw_labels,$strand,$ggdraw);
@@ -217,7 +222,7 @@ sub render_transcripts {
 
   return $self->render_text('transcript') if $self->{'text_export'};
   
-  my $ggdraw = $self->_get_data;
+  my $ggdraw = $self->get_data;
   my $ttdraw = $self->_prepare_expanded($ggdraw,$coding);
   my ($length,$draw_labels,$strand) = $self->_draw_prepare($ttdraw,$labels);
   $self->draw_expanded_transcripts($length,$draw_labels,$strand,$ttdraw);
@@ -228,7 +233,7 @@ sub render_alignslice_transcript {
 
   return $self->render_text('transcript') if $self->{'text_export'};
 
-  my $ggdraw = $self->_get_data;
+  my $ggdraw = $self->get_data;
   my $ttdraw = $self->_prepare_expanded($ggdraw);
   foreach my $t (@$ttdraw) {
     $t->{'start'} = min(grep {$_} map { $_->{'start'} } @{$t->{'exons'}});
@@ -242,7 +247,7 @@ sub render_alignslice_collapsed {
   my ($self, $labels) = @_;
   
   return $self->render_text('transcript') if $self->{'text_export'};
-  my $ggdraw = $self->_get_data;
+  my $ggdraw = $self->get_data;
   $self->_prepare_collapsed($ggdraw);
   foreach my $g (@$ggdraw) {
     $g->{'start'} = min(grep { $_ } map { $_->{'start'} } @{$g->{'exons'}});
@@ -257,7 +262,7 @@ sub render_genes {
 
   return $self->render_text('gene') if $self->{'text_export'};
   
-  my $ggdraw = $self->_get_data;
+  my $ggdraw = $self->get_data;
   $self->_prepare_collapsed($ggdraw); # For highlights & joins
   my $label_threshold = $self->my_config('label_threshold') || 50e3;
   my ($length,$draw_labels,$strand) = $self->_draw_prepare($ggdraw,$labels);
