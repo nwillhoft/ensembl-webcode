@@ -88,7 +88,7 @@ sub _get_export_data {
   my $slice             = $self->{'container'};
   my $db_alias          = $self->my_config('db');
   my $analyses          = $self->my_config('logic_names');
-  my $load_transcripts  = $self->{'my_config'}->get('display') =~ /collapsed/ ? 0 : 1;
+  my $load_transcripts  = $self->{'my_config'}->get('display') =~ /gene/ ? 0 : 1;
 
   my @genes             = map @{$slice->get_all_Genes($_, $db_alias, $load_transcripts)||[]}, @$analyses;
   my $features          = [];
