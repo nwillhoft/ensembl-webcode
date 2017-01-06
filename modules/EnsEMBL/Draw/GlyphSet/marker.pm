@@ -74,7 +74,7 @@ sub get_data {
   }
 }
 
-sub translator_class { return 'EnsFeature'; }
+sub translator_class { return 'Feature'; }
 
 sub _get_export_data {
   my ($self, $logic_name) = @_;
@@ -88,12 +88,16 @@ sub _get_export_data {
   push @features, @{$slice->get_MarkerFeatures_by_Name($marker_id)} if ($marker_id and !grep {$_->display_id eq $marker_id} @features); ## Force drawing of specific marker regardless of weight (but only if not already being drawn!)
  
   foreach my $f (sort { $a->seq_region_start <=> $b->seq_region_start }@features) {
+    ## This is cheating, but there's currently no way to associate a colour with an API object
+    my $colour_key = $self->colour_key($f);
+    $f->{'colour'} = $self->my_colour($colour_key) if $colour_key;
+
     my $ms  = $f->marker->display_MarkerSynonym;
     my $id  = $ms ? $ms->name : '';
-      ($id) = grep $_ ne '-', map $_->name, @{$f->marker->get_all_MarkerSynonyms || []} if $id eq '-' || $id eq '';
-    $f->{'drawing_id'} = $id;
+    ($id) = grep $_ ne '-', map $_->name, @{$f->marker->get_all_MarkerSynonyms || []} if $id eq '-' || $id eq '';
+    $f->{'id'} = $id;
   }
-  
+ 
   return [{'features' => \@features}];
 
 }
