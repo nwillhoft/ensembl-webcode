@@ -704,6 +704,9 @@ sub render_text {
 
     if ($track_data) {
       foreach my $track (@$track_data) {
+        if ($track->{'metadata'} && $track->{'metadata'}{'colour'}) {
+          $translator->default_colour($track->{'metadata'}{'colour'});
+        }
         foreach (@{$track->{'features'}}) {
           my ($line) = $writer->create_record($_);
           #warn ">>> LINE $line";
