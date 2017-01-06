@@ -98,9 +98,15 @@ sub _get_export_data {
 
     if ($load_transcripts) {
       my $transcripts = $g->get_all_Transcripts||[];
-      push @$features, @$transcripts;
+      foreach my $t (@$transcripts) {
+        my $colour_key = $self->colour_key($g, $t);
+        $t->{'colour'} = $self->my_colour($colour_key) if $colour_key; 
+        push @$features, $t;
+      }
     }
     else {
+      my $colour_key = $self->colour_key($g);
+      $g->{'colour'} = $self->my_colour($colour_key) if $colour_key; 
       push @$features, $g;
     }
   }
