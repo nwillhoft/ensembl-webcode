@@ -116,7 +116,7 @@ sub _get_export_data {
 
 sub translator_class { 
   my $self = shift;
-  return $self->{'my_config'}->get('display') =~ /collapsed/ ? 'Gene' : 'Transcript'; 
+  return $self->{'my_config'}->get('display') =~ /gene/ ? 'Gene' : 'Transcript'; 
 }
 
 sub features { # For genoverse
