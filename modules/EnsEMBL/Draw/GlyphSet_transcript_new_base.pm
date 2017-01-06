@@ -519,4 +519,22 @@ sub draw_rect_genes {
   $self->_make_legend($ggdraw,$self->type);
 }
 
+## Needed by export
+sub colour_key {
+  my $self       = shift;
+  my $gene       = shift;
+  my $transcript = shift || $gene;
+  my $pattern    = $self->my_config('colour_key') || '[biotype]';
+
+  # hate having to put ths hack here, needed because any logic_name specific web_data entries
+  # get lost when the track is merged - needs rewrite of imageconfig merging code
+  return 'merged' if $transcript->analysis->logic_name =~ /ensembl_havana/;
+
+  $pattern =~ s/\[gene.(\w+)\]/$1 eq 'logic_name' ? $gene->analysis->$1 : $gene->$1/eg;
+  $pattern =~ s/\[(\w+)\]/$1 eq 'logic_name' ? $transcript->analysis->$1 : $transcript->$1/eg;
+
+  return lc $pattern;
+}
+
+
 1;
