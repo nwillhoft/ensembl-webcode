@@ -1,6 +1,6 @@
 /*
  * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
- * Copyright [2016] EMBL-European Bioinformatics Institute
+ * Copyright [2016-2017] EMBL-European Bioinformatics Institute
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ Ensembl.Panel.SpeciesList = Ensembl.Panel.extend({
     this.elLk.buttonDone  = this.el.find('a._list_done');
     this.elLk.buttonReset = this.el.find('a._list_reset');
 
-    this.allSpecies       = this.params['species_list'];
+    this.allSpecies       = this.params['species_list'] || [];
     this.favTemplate      = this.params['fav_template'];
     this.listTemplate     = this.params['list_template'];
     this.refreshURL       = this.params['ajax_refresh_url'];
@@ -169,7 +169,7 @@ Ensembl.Panel.SpeciesList = Ensembl.Panel.extend({
   addOption: function(optgroup, species, favSection) {
     optgroup.append(
       '<option value="' + species.homepage + '">' +
-      species.common + ( favSection && species.favourite && species.has_alt ? (' ' + (species.assembly_v || species.assembly) ) : '' ) +
+      species.common + 
       '</option>'
     );
     if (!favSection && species.strainspage) {

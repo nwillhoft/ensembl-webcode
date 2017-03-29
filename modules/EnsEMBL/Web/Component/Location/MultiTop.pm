@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -89,8 +89,8 @@ sub content {
       $annotation_status->set('menu', 'no');
     };
     
-    $image_config->get_node('ruler')->set('caption', $_->{'short_name'});
-    $image_config->get_node('ruler')->set('caption_img',"f:24:".$_->{'species'});
+    $image_config->get_node('ruler')->set('caption', $_->{'short_name'} =~ s/^[^\s]+\s+//r);
+    $image_config->get_node('ruler')->set('caption_img',"f:24\@-6:".$_->{'species'});
     $image_config->highlight($highlight_gene) if $highlight_gene;
     
     if ($join_genes) {

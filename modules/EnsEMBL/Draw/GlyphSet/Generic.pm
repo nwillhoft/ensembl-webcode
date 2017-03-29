@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -62,8 +62,11 @@ sub render_normal {
 ## so let the configuration decide
   my $self = shift;
   my $renderers = $self->{'my_config'}->get('renderers');
-  my $default = $self->{'my_config'}->get('default_display')
-                  || $renderers->[2] || 'as_alignment_nolabel';
+  my $default = $self->{'my_config'}->get('default_display');
+  my $default_is_valid = $default ? grep { $_ eq $default } @$renderers : 0;
+  unless ($default_is_valid) {
+    $default =  $renderers->[2];
+  }
   my $method = 'render_'.$default;
   $self->$method;
 }

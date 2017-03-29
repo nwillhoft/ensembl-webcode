@@ -1,3 +1,22 @@
+=head1 LICENSE
+
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+=cut
+
 package EnsEMBL::Web::TextSequence::Markup::TranscriptLineNumbers;
 
 use strict;
@@ -19,7 +38,9 @@ sub markup {
       start => 1,
       end   => $length,
       label => ''
-    } : {}; 
+    } : {
+      dir => 0, start => 0, end => 0, label => ''
+    };
        
     my $s = 0;
     my $e = $config->{'display_width'} - 1;
@@ -41,15 +62,15 @@ sub markup {
       for ($s..$e) {
         # Check the array element exists - must be done so we don't create new elements and mess up the padding at the end of the last line
         if ($seq->[$_]) {
-          $seq_length++ if $config->{'line_numbering'} eq 'slice' || $seq->[$_]{'letter'} =~ /\w/;
-          $segment .= $seq->[$_]{'letter'};
+          $seq_length++ if $config->{'line_numbering'} eq 'slice' || ($seq->[$_]{'letter'}||'') =~ /\w/;
+          $segment .= ($seq->[$_]{'letter'}||'');
         }   
       }   
        
       # Reference sequence starting with N or NN means the transcript begins mid-codon, so reduce the sequence length accordingly.
       $seq_length -= length $1 if $segment =~ /^(N+)\w/;
         
-      $end   = $row_start + $seq_length - $data->{'dir'};
+      $end   = ($row_start||0) + $seq_length - $data->{'dir'};
       $start = $row_start if $seq_length;
         
       # If the line starts --,  =- or -= it is at the end of a protein section, so take one off the line number
@@ -67,7 +88,8 @@ sub markup {
       push @{$config->{'line_numbers'}{$n}}, { start => $start, end => $end || undef };
 
       # Increase padding amount if required
-      $config->{'padding'}{'number'} = length $start if length $start > $config->{'padding'}{'number'};
+      my $slen = ((length $start)||0);
+      $config->{'padding'}{'number'} = $slen if $slen > ($config->{'padding'}{'number'}||0);
 
       $e += $config->{'display_width'};
     }

@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -62,7 +62,7 @@ sub initialize_new {
   }
   
   my ($sequence, $markup) = $self->get_sequence_data($config);
-  $self->view->markup_new($sequence,$markup,$config);
+  $self->view->markup($sequence,$markup,$config);
 
   my $view = $self->view;
 
@@ -122,7 +122,7 @@ sub content_sub_slice {
 
   $self->id('');
   
-  return $self->build_sequence_new($sequence, $config,1);
+  return $self->build_sequence($sequence, $config,1);
 }
 
 sub selected_transcripts {

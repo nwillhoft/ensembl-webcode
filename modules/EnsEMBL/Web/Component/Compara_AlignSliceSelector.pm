@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ sub content {
       last;
     }
   }
-  # warn Data::Dumper::Dumper $alignments;
+
   # For the variation compara view, only allow multi-way alignments
   if ($align_label eq '') {
     my %species_hash;
@@ -72,13 +72,16 @@ sub content {
 
   my $modal_uri       = $hub->url('MultiSelector', {qw(type Location action TaxonSelector), align => $align});
 
-#  my $modal_uri = URI->new(sprintf '/%s/Component/Blast/Web/TaxonSelector/ajax?', $default_species || 'Multi' );
-#  $modal_uri->query_form(align => $align) if $align; 
+  # Tackle action for alignments image and text
+  my $action = $hub->function eq 'Image' ? 'Compara_AlignSliceBottom' : $hub->action;
+  my $compara_config_url  = $hub->url('Config', {type => $hub->type,  action => $action});
 
   ## Get the species in the alignment
   return sprintf(qq{
     <div class="js_panel alignment_selector_form">
       <input type="hidden" class="panel_type" value="ComparaAlignSliceSelector" />
+      <input type="hidden" class="update_component" value="Compara_AlignSliceBottom" />
+      <input type="hidden" class="compara_config_url" value="$compara_config_url">
       <div class="navbar " style="width:%spx; text-align:left">
         <form action="%s" method="get">
           <div class="ss-alignment-container">

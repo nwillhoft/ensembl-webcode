@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -48,14 +48,14 @@ sub content {
     <p>If you want to use your own data file, please go to the <a href="$add_track_link" class="modal_link" rel="modal_user_data">Add custom track</a> page instead.</p>
   }});
 
-  my @species = sort {$a->{'caption'} cmp $b->{'caption'}} map {'value' => $_, 'caption' => $species_defs->species_label($_, 1)}, $species_defs->valid_species;
   $form->add_field({
-    'type'    => 'dropdown',
-    'name'    => 'species',
-    'label'   => 'Species',
-    'values'  => \@species,
-    'value'   => $current_species  # Species is set automatically for the page you are on
+    'type'      => 'noedit',
+    'label'     => 'Species',
+    'no_input'  => 1,
+    'is_html'   => 1,
+    'value'     => $species_defs->species_label($current_species)  # Species is set automatically for the page you are on
   });
+  $form->add_hidden({'name' => 'species', 'value' => $current_species});
 
   my @types = (
     {'value'  => 'Gene',                'caption' => 'Gene'},

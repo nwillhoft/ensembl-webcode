@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -65,7 +65,7 @@ sub ajax_autocomplete {
   my $self    = shift;
   my $hub     = $self->hub;
   my $cache   = $hub->cache;
-  my $species = $hub->species;
+  my $species = $hub->param('species') || $hub->species;
   my $query   = $hub->param('q');
   my ($key, $results);
 
@@ -128,7 +128,7 @@ sub ajax_track_order {
   my $track         = $hub->param('track');
   my $prev_track    = $hub->param('prev');
 
-  if ($image_config && $track && $prev_track && $image_config->update_track_order([$track, $prev_track])) {
+  if ($image_config && $track && $image_config->update_track_order([$track, $prev_track])) {
     $image_config->save_user_settings;
   }
 }
@@ -151,6 +151,15 @@ sub ajax_config_reset {
   ## Resets image config for the selected image
   my $self          = shift;
   my $hub           = $self->hub;
+  my $view_config   = $hub->param('view_config');
+     $view_config   = [ split '::', $view_config ] if $view_config;
+     $view_config   = $hub->get_viewconfig({type => $view_config->[0], component => $view_config->[1]}) if $view_config;
+
+  if ($view_config) {
+    $view_config->reset_user_settings; # does not return positive value if only 'saved' key was present
+    $view_config->save_user_settings;
+  }
+
   my $image_config  = $hub->param('image_config');
      $image_config  = $hub->get_imageconfig($image_config) if $image_config;
 
@@ -280,6 +289,7 @@ sub ajax_table_export {
     $str =~ s/^\s+//;
     $str =~ s/\s+$//g;
     $str = $self->strip_HTML(decode_entities($str));
+    $str =~ s/\xA0/ /g;        # Replace non-breakable spaces
     $str =~ s/"/""/g;
     $str =~ s/\0/","/g;
     return $str;

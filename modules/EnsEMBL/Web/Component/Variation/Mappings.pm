@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -292,7 +292,8 @@ sub content {
       $flag = 1;
     }
     
-    
+    next unless $hub->database('regulation');
+        
     ## Reg feats ##
     # reset allele string if recalculating for HGMD
     $vf_obj->allele_string('A/C/G/T') if $hub->param('recalculate');
@@ -432,7 +433,7 @@ sub table_columns {
   );  
 
   push @columns, ({ key => 'sift',     title => 'SIFT',     sort => 'position_html', align => 'center', help => $glossary->{'SIFT'} })
-      if defined $self->hub->species_defs->databases->{'DATABASE_VARIATION'}->{'SIFT'};
+      if $self->hub->species_defs->databases->{'DATABASE_VARIATION'} && defined $self->hub->species_defs->databases->{'DATABASE_VARIATION'}->{'SIFT'};
 
   push @columns, ({ key => 'polyphen', title => 'PolyPhen', sort => 'position_html', align => 'center', help => $glossary->{'PolyPhen'} })
       if $self->hub->species eq 'Homo_sapiens';

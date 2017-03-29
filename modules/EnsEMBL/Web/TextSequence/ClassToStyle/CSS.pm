@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,8 +30,14 @@ sub convert_class_to_style {
   return undef unless @$current_class;
   my %class_to_style = %{$self->make_class_to_style_map($config)};
   my %style_hash;
-  foreach (sort { $class_to_style{$a}[0] <=> $class_to_style{$b}[0] } @$current_class) {
-    my $st = $class_to_style{$_}[1];
+  my @class_order;
+  foreach my $key (@$current_class) {
+    $key = lc $key unless $class_to_style{$key};
+    push @class_order,$class_to_style{$key};
+  }
+
+  foreach my $values (sort { $a->[0] <=> $b->[0] } @class_order) {
+    my $st = $values->[1];
     map $style_hash{$_} = $st->{$_}, keys %$st;
   }
   return join ';', map "$_:$style_hash{$_}", keys %style_hash;

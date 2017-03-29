@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ sub draw_feature {
 ### @param feature Hashref - data for a single feature
 ### @param position Hashref - information about the feature's size and position
   my ($self, $feature, $position) = @_;
+#  warn "\n\n>>> DRAWING FEATURE ".$feature->{'label'}; 
 
   ## In case we're trying to draw a feature with no internal structure,
   ## revert to parent method, which is much simpler!
@@ -49,13 +50,19 @@ sub draw_feature {
   my $track_config  = $self->track_config;
   my $join          = $track_config->get('no_join') ? 0 : 1;
 
+  ## Need to set y to 0 here, as a composite's components' y-coords are _added_ to this base y
+  my $composite = $self->Composite({
+                                      y       => 0,
+                                      height  => $position->{'height'},
+                                      title   => $feature->{'title'},
+                                      href    => $feature->{'href'},
+                                  });
+
   my %defaults = (
                   y            => $position->{'y'},
                   height       => $position->{'height'},
                   strand       => $feature->{'strand'},
                   colour       => $colour,
-                  href         => $feature->{'href'},
-                  title        => $feature->{'title'},
                   absolutey    => 1,
                 );
 
@@ -72,18 +79,18 @@ sub draw_feature {
       $params{'colour'} = $join_colour unless $track_config->get('collapsed');
 
       my $start         = $previous{'x'} + $previous{'width'};
-      $start            = 0 if $start < 0;
-      $params{'x'}      = $start;
+      $start            = 1 if $start < 1;
+      $params{'x'}      = $start - 1;
       my $end           = $_->{'start'};
-      my $width         = $end - $start;
+      my $width         = $end - $start + 1;
       if ($end > $image_width) {
-        $width          = $image_width - $start;
+        $width          = $image_width - $start + 1;
         $last_element   = 1;
       }
       $params{'width'}  = $width;
       $params{'href'}   = $feature->{'href'};
 
-      $self->draw_join(%params);      
+      $self->draw_join($composite, %params);      
     }
     last if $last_element;
 
@@ -91,10 +98,10 @@ sub draw_feature {
     my %params = %defaults;
 
     my $start = $_->{'start'};
-    $start = 0 if $start < 0;
+    $start = 1 if $start < 1;
     my $end   = $_->{'end'};
-    $params{'x'}      = $start;
-    $params{'width'}  = $end - $start;
+    $params{'x'}      = $start - 1;
+    $params{'width'}  = $end - $start + 1;
     $params{'href'}   = $_->{'href'} || $feature->{'href'};
 
     ## Only draw blocks that appear on the image!
@@ -105,15 +112,22 @@ sub draw_feature {
     else {
       $params{'colour'}     = $colour;
       $params{'structure'}  = $_;
-      $self->draw_block(%params);
+      $self->draw_block($composite, %params);
     }
     $current_x += $width;
     %previous = %params;
   }
+
+  ## Add any 'bridges', i.e. extra glyphs to join two corresponding features
+  foreach (@{$feature->{'bridges'}||[]}) {
+    $self->draw_bridge($composite ,$_);
+  } 
+
+  push @{$self->glyphs}, $composite;
 }
 
 sub draw_join {
-  my ($self, %params) = @_;
+  my ($self, $composite, %params) = @_;
   my $alpha = $self->track_config->get('alpha');
 
   if ($alpha) {
@@ -123,12 +137,19 @@ sub draw_join {
     $params{'bordercolour'} = $params{'colour'};
     delete $params{'colour'};
   }
-  push @{$self->glyphs}, $self->Rect(\%params);
+  $composite->push($self->Rect(\%params));
 }
 
 sub draw_block {
-  my ($self, %params) = @_;
-  push @{$self->glyphs}, $self->Rect(\%params);
+  my ($self, $composite, %params) = @_;
+  $composite->push($self->Rect(\%params));
+}
+
+sub draw_bridge {
+  ## Set up a "join tag" to display mapping between features, e.g. homologues
+  ## This will actually be rendered into a glyph later, when all the glyphsets are drawn
+  my ($self, $composite, $bridge) = @_;
+  $self->add_bridge($composite, $bridge->{'key'}, 0.5, 0.5, $bridge->{'colour'}, 'line', 1000);
 }
 
 1;

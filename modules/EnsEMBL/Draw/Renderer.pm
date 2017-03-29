@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -146,14 +146,23 @@ sub render {
   $config->image_height($im_height);
   
   my $im_width = $config->image_width;
-  
   # create a fresh canvas
   $self->init_canvas($config, $im_width, $im_height) if $self->can('init_canvas');
   
   my %tags;
   my %layers;
-  
+
+  # Track name to y coordinates map used for full track highlighting on image export
+  my $track_hl_coords = {};
+
   for my $glyphset (@{$self->{'glyphsets'}}) {
+    if (scalar @{$glyphset->{'glyphs'}} && $glyphset->{label} && $glyphset->{label}->{track}) {
+      # Coordinates used for track highlighting
+      $track_hl_coords->{$glyphset->{label}->{track}} = {
+        pixely => $glyphset->{label}->{pixely},
+        height => $glyphset->height
+      };
+    }
     foreach (keys %{$glyphset->{'tags'}}) {
       if ($tags{$_}) {
         my $COL   = undef;
@@ -234,6 +243,16 @@ sub render {
     push @{$layers{$top_layer + 2}}, $marked_layer;
   }
 
+  my $highlightedTracks = $self->{'extra'}{'highlightedTracks'} || [];
+
+  my $hl_layer = -1;
+
+  foreach (@$highlightedTracks) {
+    if (defined $track_hl_coords->{$_}) {
+      push @{$layers{--$hl_layer}}, $self->add_track_highighting_layer($track_hl_coords->{$_}, $im_width);
+    }
+  }
+
   my %M;
   my $Ta;
 
@@ -261,6 +280,18 @@ sub render {
       $Ta->{$method}[1]++;   
     }
   }
+}
+
+sub add_track_highighting_layer {
+  my ($self, $coords, $im_width) = @_;
+  return EnsEMBL::Draw::Glyph::Rect->new({
+    colour      => 'yellow',
+    alpha       => 0.7,
+    pixelx      => 0,
+    pixely      => $coords->{pixely},
+    pixelwidth  => $im_width,
+    pixelheight => $coords->{height}
+  });
 }
 
 sub add_location_marking_layer {

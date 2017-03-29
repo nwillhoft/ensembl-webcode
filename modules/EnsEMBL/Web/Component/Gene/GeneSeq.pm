@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ package EnsEMBL::Web::Component::Gene::GeneSeq;
 
 use strict;
 
-use base qw(EnsEMBL::Web::Component::TextSequence EnsEMBL::Web::Component::Gene);
+use parent qw(EnsEMBL::Web::Component::TextSequence EnsEMBL::Web::Component::Gene);
 
 use EnsEMBL::Web::TextSequence::View::GeneSeq;
 
@@ -62,7 +62,7 @@ sub initialize_new {
   $config->{'number'} = 1 if $config->{'line_numbering'} ne 'off';
 
   my ($sequence, $markup) = $self->get_sequence_data($config->{'slices'}, $config,$adorn);
-  $self->view->markup_new($sequence,$markup,$config);
+  $self->view->markup($sequence,$markup,$config);
 
   return ($sequence, $config);
 }
@@ -116,7 +116,7 @@ sub content_sub_slice {
   $template .= '<p class="invisible">.</p>';
   $self->view->output->template($template);
 
-  return $self->build_sequence_new($sequence,$config,1);
+  return $self->build_sequence($sequence,$config,1);
 }
 
 sub export_options { return {'action' => 'GeneSeq'}; }

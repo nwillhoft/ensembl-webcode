@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -93,7 +93,7 @@ sub build_tracks {
     $T->{'bin_size'}  = $bin_size;
     $T->{'v_offset'}  = $v_offset;
 
-    my $current_max = max @$scores;
+    my $current_max = ref($scores->[0]) eq 'HASH' ? 0 : max @$scores;
     if (uc($chr) eq 'MT') {
       $T->{'max_value'} = undef;
     }
@@ -109,8 +109,8 @@ sub build_tracks {
       my $mean = $_;
       if (ref($_) eq 'HASH') {
         $mean = $_->{'mean'};
-        push $mins, $_->{'min'};
-        push $maxs, $_->{'max'};
+        push @$mins, $_->{'min'};
+        push @$maxs, $_->{'max'};
       } 
       ## Use real values for max/min labels
 		  $chr_min_data = $mean if ($mean < $chr_min_data || $chr_min_data eq undef); 
@@ -201,10 +201,9 @@ sub _line {
   my $old_y = undef;
   for(my $x = $T->{'v_offset'} - $T->{'bin_size'}; $x < $T->{'max_len'}; $x += $T->{'bin_size'}) {
     my $datum       = shift @scores;
-    my $max_value   = $T->{'max_value'} || 1;
+    last if not defined $datum;
     my $max_mean    = $T->{'max_mean'} || 1;
-    my $scale       = $scale_to_mean ? $T->{'width'} / $max_mean
-                                     : $T->{'width'} / $max_value;
+    my $scale       = $scale_to_mean ? $T->{'width'} / $max_mean : 1;
     my $new_y       = $datum * $scale;
     my $min_whisker = (shift @mins) * $scale;
     my $max_whisker = (shift @maxs) * $scale;
@@ -265,6 +264,7 @@ sub _histogram {
   my $old_y;
   for(my $x = $T->{'v_offset'}; $x < $T->{'max_len'}; $x += $T->{'bin_size'}) {
     my $datum = shift @data;
+    last if not defined $datum;
     my $new_y = $datum / $T->{'max_value'} * $T->{'width'};
 
     if(defined $old_y) {

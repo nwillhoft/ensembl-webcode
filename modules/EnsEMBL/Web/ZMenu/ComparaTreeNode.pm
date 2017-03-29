@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -69,24 +69,19 @@ sub content {
 
   my $tagvalues       = $node->get_tagvalue_hash;
   my $speciesTreeNode = $node->species_tree_node();
-  my $taxon_id             = $speciesTreeNode->taxon_id;
-     $taxon_id        = $node->genome_db->taxon_id if !$taxon_id && $is_leaf && not $is_supertree;
-  my $taxon_name           = $speciesTreeNode->node_name;
-     $taxon_name      = $node->genome_db->taxon->name if !$taxon_name && $is_leaf && not $is_supertree;
+  my $taxon_name      = $speciesTreeNode->get_scientific_name;
+  my $taxon_mya       = $speciesTreeNode->get_divergence_time;
+  my $taxon_alias     = $speciesTreeNode->get_common_name;
 
-  my $taxon_mya       = $hub->species_defs->multi_hash->{'DATABASE_COMPARA'}{'TAXON_MYA'}->{$taxon_id};
-  my $taxon_alias     = $hub->species_defs->multi_hash->{'DATABASE_COMPARA'}{'TAXON_NAME'}->{$taxon_id};
   my $caption         = 'Taxon: ';
   
   if (defined $taxon_alias) {
     $caption .= $taxon_alias;
     $caption .= sprintf ' ~%d MYA', $taxon_mya if defined $taxon_mya;
-    $caption .= " ($taxon_name)" if defined $taxon_name;
-  } elsif (defined $taxon_name) {
+    $caption .= " ($taxon_name)";
+  } else {
     $caption .= $taxon_name;
     $caption .= sprintf ' ~%d MYA', $taxon_mya if defined $taxon_mya;
-  } else {
-    $caption .= 'unknown';
   }
   
   $self->caption($caption);
@@ -110,7 +105,7 @@ sub content {
        
     $self->add_entry({
       type  => 'Lost taxa',
-      label => join(', ', map { $hub->species_defs->multi_hash->{'DATABASE_COMPARA'}{'TAXON_NAME'}->{$_->taxon_id} || $_->node_name }  @$lost_taxa ),
+      label => join(', ', map { $_->get_common_name || $_->get_scientific_name } @$lost_taxa ),
       order => 5.6
     });
   }
@@ -368,7 +363,8 @@ sub content {
     if ($hub->referer->{ENSEMBL_ACTION} ne 'Strain_Compara_Tree') {
 
       # Get wasabi files if found in session store
-      my $gt_id               = $node->tree->stable_id;
+      my $is_strain = $hub->species_defs->IS_STRAIN_OF ? 1 : 0;
+      my $gt_id               = $is_strain ? $gene->stable_id : $node->tree->stable_id;
       my $wasabi_session_key  = $gt_id . "_" . $node_id;
       my $wasabi_session_data = $hub->session->get_data(type=>'tree_files', code => 'wasabi');
 
@@ -379,7 +375,7 @@ sub content {
         # Create wasabi url to load from their end
         $link = sprintf (
                           '/wasabi/wasabi.htm?tree=%s',
-                          uri_escape($hub->species_defs->ENSEMBL_PROTOCOL . '://' . $hub->species_defs->ENSEMBL_SERVERNAME . $tree_file)
+                          uri_escape($object->species_defs->ENSEMBL_BASE_URL . $tree_file)
                         );
       }
       else {
@@ -391,9 +387,11 @@ sub content {
 
         my $is_success = head($rest_url);
         if ($is_success) {
-          $rest_url .= sprintf('/genetree/id/%s?content-type=text/javascript&aligned=1&subtree_node_id=%s',
-                       $gt_id,
-                       $node_id);
+          $rest_url .= sprintf('/genetree/%sid/%s?content-type=text/javascript&aligned=1&subtree_node_id=%s&%s',
+                        $is_strain ? 'member/' : '',
+                        $gt_id,
+                        $node_id,
+                        $is_strain ? 'clusterset_id=murinae' : '');
 
           if ($hub->wasabi_status) {
             $link = $hub->get_ExtURL('WASABI_ENSEMBL', {

@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ sub content {
 
   my ($alert_box, $error) = $self->check_for_align_problems({
                     'align' => $align,
-                    'species' => $object->species,
+                    'species' => $hub->species_defs->IS_STRAIN_OF ? ucfirst $hub->species_defs->SPECIES_PRODUCTION_NAME($object->species) : $object->species,
                   });
   return $alert_box if $error;
   my ($warnings, $image_link);
@@ -210,7 +210,7 @@ sub content_sub_slice {
   my ($sequence, $config) = $self->_get_sequence(@_);
   my $html = '';
   $html .= $self->describe_filter($config) unless $self->param('follow');
-  $html .= $self->build_sequence_new($sequence, $config,1);
+  $html .= $self->build_sequence($sequence, $config,1);
   return $html;
 }
 
@@ -279,7 +279,7 @@ sub _get_sequence {
     $seq->name($slice->{'display_name'} || $slice->{'name'});
   }
 
-  $view->markup_new($sequence,$markup,$config);
+  $view->markup($sequence,$markup,$config);
   
   # Only if this IS NOT a sub slice - print the key and the slice list
   my $template = '';
@@ -374,7 +374,7 @@ sub draw_tree {
     foreach my $this_node (@{$restricted_tree->get_all_leaves}) {
       my $genomic_align_group = $this_node->genomic_align_group;
       next if (!$genomic_align_group);
-      my $node_name = $hub->species_defs->production_name_mapping($genomic_align_group->genome_db->name);
+      my $node_name = $genomic_align_group->genome_db->name;
       next if $slice_ok{$node_name};
       $this_node->disavow_parent;
       $restricted_tree = $restricted_tree->minimize_tree;
@@ -563,7 +563,7 @@ sub _get_target_slice_table {
     my $slice_length = ($ref_end-$ref_start+1);
 
     my $align_params = "$align";
-    $align_params .= "--" . $non_ref_ga->genome_db->name . "--" . $non_ref_ga->dnafrag->name . ":$non_ref_start-$non_ref_end" if ($non_ref_ga);
+    $align_params .= "--" . $hub->species_defs->production_name_mapping($non_ref_ga->genome_db->name) . "--" . $non_ref_ga->dnafrag->name . ":$non_ref_start-$non_ref_end" if ($non_ref_ga);
 
     my %url_params = (
                      species => $ref_species,

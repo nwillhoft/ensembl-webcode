@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,6 +28,8 @@ sub init {
   my $self = shift;
   $self->{'main_class'}     = 'widemain';
   $self->{'lefthand_menu'}  = 0;
+  $self->{'has_species_bar'}  = $self->hub->species && $self->hub->species !~ /multi|common/i ? 1 : 0;
+  $self->{'has_tabs'}         = $self->hub->controller->configuration->has_tabs;
   $self->add_head;
   $self->add_body;
 }
@@ -38,7 +40,15 @@ sub add_body {
 
   $page->add_body_elements(qw(
     logo             EnsEMBL::Web::Document::Element::Logo
-    tabs             EnsEMBL::Web::Document::Element::Tabs
+  ));
+
+  if ($self->{'has_species_bar'}) {
+    $page->add_body_elements(qw(
+      species_bar      EnsEMBL::Web::Document::Element::SpeciesBar
+    ));
+  }
+
+  $page->add_body_elements(qw(
     account          EnsEMBL::Web::Document::Element::AccountLinks
     search_box       EnsEMBL::Web::Document::Element::SearchBox
     tools            EnsEMBL::Web::Document::Element::ToolLinks

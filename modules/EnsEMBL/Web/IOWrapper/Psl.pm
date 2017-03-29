@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,8 +39,8 @@ sub create_hash {
   $metadata ||= {};
 
   my ($seq_region, $feature_start, $feature_end) = $self->coords;
-  my $start         = $feature_start - $slice->start;
-  my $end           = $feature_end - $slice->start;
+  my $start         = $feature_start - $slice->start + 1;
+  my $end           = $feature_end - $slice->start + 1;
   return if $end < 0 || $start > $slice->length;
 
   ## Only set colour from strand if we have something in file, otherwise

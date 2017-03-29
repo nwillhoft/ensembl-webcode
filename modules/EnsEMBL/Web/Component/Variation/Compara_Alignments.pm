@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -172,7 +172,7 @@ sub content {
   } 
 
   my ($seq,$config) = $self->_get_sequence($slice,\@aligned_slices,$defaults);
-  $html .= $self->build_sequence_new($seq,$config,1);
+  $html .= $self->build_sequence($seq,$config,1);
   $html .= $self->_info('Notes', $info) if $info;
 
   return $html;

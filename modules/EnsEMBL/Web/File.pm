@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ use EnsEMBL::Web::Utils::Encryption qw/encrypt_value/;
 ###  - file_name may be auto-generated, or set by the user
 
 our %path_map = (
-                'user'  => ['ENSEMBL_TMP_DIR', 'ENSEMBL_TMP_URL'],
+                'user'  => ['ENSEMBL_USERDATA_DIR', 'ENSEMBL_USERDATA_URL'],
                 'image' => ['ENSEMBL_TMP_DIR_IMG', 'ENSEMBL_TMP_URL_IMG'],
                 'tools' => ['ENSEMBL_TMP_DIR_TOOLS'],
                 );

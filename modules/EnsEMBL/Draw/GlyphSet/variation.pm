@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,7 +32,8 @@ use EnsEMBL::Draw::Style::Feature::Variant;
 
 use base qw(EnsEMBL::Draw::GlyphSet::Simple);
 
-sub supports_subtitles { return 1; }
+## Hack for backwards compatibility
+sub subtitle_height { return 6; }
 
 sub render_normal {
   my $self = shift;
@@ -65,6 +66,9 @@ sub render_nolabels {
 sub _render {
   my $self = shift;
   $self->{'my_config'}->set('show_overlay', 1);
+  $self->{'my_config'}->set('show_subtitle', 1);
+  ## Add some extra vertical space for indels
+  $self->{'my_config'}->set('extra_height', 8);
 
   my $data = $self->get_data;
   return unless scalar @{$data->[0]{'features'}||[]};

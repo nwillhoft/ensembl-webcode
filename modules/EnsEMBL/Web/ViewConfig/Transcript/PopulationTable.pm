@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ sub init_cacheable {
 sub field_order {
   ## @override
   my $self = shift;
-  return $self->SUPER::form_fields(@_), 'data_grouping';
+  return $self->SUPER::field_order(@_), 'data_grouping';
 }
 
 sub form_fields {
@@ -53,6 +53,8 @@ sub form_fields {
       { 'value' => 'by_variant',  'caption' => 'By variation ID and position' },
     ]
   };
+
+  return $fields;
 }
 
 1;

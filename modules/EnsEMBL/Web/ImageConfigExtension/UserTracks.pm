@@ -124,6 +124,7 @@ sub _load_url_feature_track {
   my ($strand, $renderers, $default) = $self->_user_track_settings(undef, $format);
 
   my $track = $self->create_track_node('custom_feature', 'Single feature', {
+    'linked_record'   => {'type' => $session_record_data->{'type'}, 'code' => $session_record_data->{'code'}, 'record_type' => 'session'},
     'external'        => 'user',
     'glyphset'        => 'flat_file',
     'colourset'       => 'classes',
@@ -158,22 +159,25 @@ sub _load_remote_url_tracks {
     my $data = $record->data;
 
     next if $data->{'no_attach'};
+    ## Don't turn off trackhubs that were added before disconnection code
+    next if (defined $data->{'disconnected'} && $data->{'disconnected'} == 1);
 
     my $source_name = $data->{'name'} || $data->{'url'};
 
     next unless $source_name;
 
     $tracks_data{'url_'.$record->code} = {
-      'source_type' => $record->record_type,
-      'source_name' => $source_name,
-      'source_url'  => $data->{'url'}       || '',
-      'species'     => $data->{'species'}   || '',
-      'format'      => $data->{'format'}    || '',
-      'style'       => $data->{'style'}     || '',
-      'colour'      => $data->{'colour'}    || '',
-      'renderers'   => $data->{'renderers'} || '',
-      'timestamp'   => $data->{'timestamp'} || time,
-      'display'     => $data->{'display'}, #$self->check_threshold($data->{'display'}),
+      'linked_record' => {'type' => $record->type, 'code' => $record->code, 'record_type' => $record->record_type},
+      'source_type'   => $record->record_type,
+      'source_name'   => $source_name,
+      'source_url'    => $data->{'url'}       || '',
+      'species'       => $data->{'species'}   || '',
+      'format'        => $data->{'format'}    || '',
+      'style'         => $data->{'style'}     || '',
+      'colour'        => $data->{'colour'}    || '',
+      'renderers'     => $data->{'renderers'} || '',
+      'timestamp'     => $data->{'timestamp'} || time,
+      'display'       => $data->{'display'}, #$self->check_threshold($data->{'display'}),
     };
   }
 
@@ -183,7 +187,11 @@ sub _load_remote_url_tracks {
     my $track_data = $tracks_data{$code};
 
     if (lc $track_data->{'format'} eq 'trackhub') {
-      $self->_add_trackhub($track_data->{'source_name'}, $track_data->{'source_url'}) if $self->get_parameter('can_trackhubs');
+      my ($trackhub_menu) = $self->get_parameter('can_trackhubs') ? $self->_add_trackhub($track_data->{'source_name'}, $track_data->{'source_url'}) : ();
+
+      if ($trackhub_menu && ($trackhub_menu = $self->get_node($trackhub_menu))) {
+        $trackhub_menu->set_data('linked_record', $track_data->{'linked_record'});
+      }
 
     } else {
 
@@ -238,6 +246,7 @@ sub _load_uploaded_tracks {
     my $display     = $data->{'display'}; #$self->check_threshold($data->{'display'});
 
     $menu->append_child($self->create_track_node('upload_'.$record->code, $data->{'name'}, {
+      'linked_record'   => {'type' => $record->type, 'code' => $record->code, 'record_type' => $record->record_type},
       'external'        => 'user',
       'glyphset'        => 'flat_file',
       'colourset'       => 'userdata',

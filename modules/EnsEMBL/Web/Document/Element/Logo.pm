@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -63,12 +63,17 @@ sub content {
 sub init {
   my $self  = shift;
   my $style = $self->species_defs->ENSEMBL_STYLE;
-  
-  $self->image       = $style->{'SITE_LOGO'};
-  $self->width       = $style->{'SITE_LOGO_WIDTH'};
-  $self->height      = $style->{'SITE_LOGO_HEIGHT'};
-  $self->alt         = $style->{'SITE_LOGO_ALT'};
-  $self->href        = $style->{'SITE_LOGO_HREF'};
+ 
+  # SiteDefs is the right place for this, please use it. There are many
+  # customisations, though, which rely on INI, probably including external
+  # installs. We should announce this change and then remove the old
+  # mechanism in a future release. SiteDefs type is required for EBI AWS
+  # mirrors, as they execute code.
+  $self->image  = $style->{'SITE_LOGO'} || $SiteDefs::SITE_LOGO;
+  $self->width  = $style->{'SITE_LOGO_WIDTH'} || $SiteDefs::SITE_LOGO_WIDTH;
+  $self->height = $style->{'SITE_LOGO_HEIGHT'} || $SiteDefs::SITE_LOGO_HEIGHT;
+  $self->alt    = $style->{'SITE_LOGO_ALT'} || $SiteDefs::SITE_LOGO_ALT;
+  $self->href   = $style->{'SITE_LOGO_HREF'} || $SiteDefs::SITE_LOGO_HREF;
   $self->print_image = $style->{'PRINT_LOGO'};
 }
 

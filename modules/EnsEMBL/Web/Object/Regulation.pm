@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -84,6 +84,12 @@ sub seq_region_length { my $self = shift; return $self->Obj->slice->seq_region_l
 sub activity {
   my ($self, $epigenome) = @_;
   return unless $epigenome;
+
+  if (ref $epigenome ne 'Bio::EnsEMBL::Funcgen::Epigenome') {
+    my $db      = $self->hub->database('funcgen');
+    my $adaptor = $db->get_adaptor('Epigenome');
+    $epigenome  = $adaptor->fetch_by_name($epigenome);
+  }
 
   my $regact = $self->Obj->regulatory_activity_for_epigenome($epigenome);
   return $regact->activity if $regact;
@@ -329,12 +335,22 @@ sub get_evidence_data {
 
 sub all_epigenomes {
   my ($self) = @_;
-  return [sort keys %{$self->hub->species_defs->databases->{'DATABASE_FUNCGEN'}->{'tables'}{'cell_type'}{'names'}}];
+  
+  if ( $self->hub->species_defs->databases->{'DATABASE_FUNCGEN'} ) {
+    return [sort keys %{$self->hub->species_defs->databases->{'DATABASE_FUNCGEN'}->{'tables'}{'cell_type'}{'names'}}];
+  }
+
+  return [];
 }
 
 sub regbuild_epigenomes {
   my ($self) = @_;
-  return [sort keys %{$self->hub->species_defs->databases->{'DATABASE_FUNCGEN'}->{'tables'}{'cell_type'}{'regbuild_names'}}];
+
+  if ( $self->hub->species_defs->databases->{'DATABASE_FUNCGEN'} ) {
+    return [sort keys %{$self->hub->species_defs->databases->{'DATABASE_FUNCGEN'}->{'tables'}{'cell_type'}{'regbuild_names'}}];
+  }
+
+  return [];
 }
 
 ################ Calls for Feature in Detail view ###########################

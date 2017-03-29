@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -72,7 +72,7 @@ sub create_form {
   for (keys %$settings) {
     next unless ref $settings->{$_} eq 'HASH';
     next if $settings->{'no_user'};
-    $settings->{$_}{'value'} = $self->param($_);
+    $settings->{$_}{'value'} = $self->param($_) if defined($self->param($_));
   }
 
   my $format_label = {

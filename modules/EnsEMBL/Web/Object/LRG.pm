@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ use Bio::EnsEMBL::Compara::GenomeDB;
 use Bio::EnsEMBL::Compara::Homology;
 use Exporter;
 
-use EnsEMBL::Web::Cache;
 use base qw(EnsEMBL::Web::Object);
 
 sub create_features {
@@ -1036,7 +1035,10 @@ return $fg_db;
 sub feature_sets {
   my $self = shift;
 
-  my $available_sets = $self->species_defs->databases->{'DATABASE_FUNCGEN'}->{'FEATURE_SETS'};
+  my $available_sets = [];
+  if ( $self->species_defs->databases->{'DATABASE_FUNCGEN'} ) {
+    $available_sets = $self->species_defs->databases->{'DATABASE_FUNCGEN'}->{'FEATURE_SETS'};
+  }
   my $fg_db = $self->get_fg_db; 
   my $feature_set_adaptor = $fg_db->get_FeatureSetAdaptor;
   my @fsets;

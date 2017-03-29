@@ -1,7 +1,7 @@
 =head1 sLICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -51,6 +51,9 @@ sub iconic_build_key {
 sub cmp {
   my ($self,$x,$y,$f,$c,$km,$col) = @_;
 
+  if($km->{"decorate/iconic"}{$col}{"*"}{'icon_source'}) {
+    return (lc $x cmp lc $y)*$f;
+  }
   $c->{$x} = iconic_build_key($km,$col,$x) unless exists $c->{$x};
   $c->{$y} = iconic_build_key($km,$col,$y) unless exists $c->{$y};
   return ($c->{$x} cmp $c->{$y})*$f;

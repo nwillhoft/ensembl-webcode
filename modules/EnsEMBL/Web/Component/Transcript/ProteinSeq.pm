@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -72,7 +72,7 @@ sub initialize_new {
   $config->{'consequence_filter'} = { map { $_ => 1 } @consequence } if $config->{'snp_display'} && join('', @consequence) ne 'off';
   
   my ($sequence, $markup) = $self->get_sequence_data($translation, $config);
-  $self->view->markup_new($sequence,$markup,$config);
+  $self->view->markup($sequence,$markup,$config);
   
   return ($sequence, $config);
 }
@@ -85,7 +85,7 @@ sub content {
   
   my ($sequence, $config) = $self->initialize_new($translation);
 
-  return $self->describe_filter($config).$self->build_sequence_new($sequence, $config);
+  return $self->describe_filter($config).$self->build_sequence($sequence, $config);
 }
 
 sub export_options { return {'action' => 'Protein'}; }

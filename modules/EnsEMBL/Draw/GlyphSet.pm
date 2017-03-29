@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -48,6 +48,7 @@ use EnsEMBL::Draw::Glyph::Arc;
 use Bio::EnsEMBL::Registry;
 use Bio::EnsEMBL::DnaDnaAlignFeature;
 
+use EnsEMBL::Draw::Utils::Bump qw(text_bounds mr_bump do_bump);
 use EnsEMBL::Web::Utils::RandomString qw(random_string);
 
 use parent qw(EnsEMBL::Root);
@@ -287,7 +288,10 @@ sub bumped {
 
 sub height {
   my ($self) = @_;
-  return int(abs($self->{'maxy'}-$self->{'miny'}) + 0.5);
+  ## New drawing code calculates its height differently
+  my $h = $self->{'my_config'}->get('total_height');
+  my $old_h = int(abs($self->{'maxy'}-$self->{'miny'}) + 0.5);
+  return $h > $old_h ? $h : $old_h;
 }
 
 sub width {
@@ -575,13 +579,20 @@ sub init_label {
   my $track     = $self->type;
   my $node      = $config->get_node($track);
   my $component = $config->get_parameter('component');
-  my $hover     = ($text =~m/Legend/)? 0 : $component && !$hub->param('export') && $node->get('menu') ne 'no';
+  my $hover     = ($text =~m/Legend/)? 0 : $component && !$hub->param('export') && $node->get('menu') ne 'no' && $track ne 'scalebar';
   my $class     = random_string(8);
+  my $strand_map= { '1' => 'f', '-1' => 'r' };
+  my $strand    = $node->get('drawing_strand') && $self->strand ? $strand_map->{$self->strand} : '';
+  my $highlight_track_uniq_id = $strand ? "$track." . $strand : $track;
+
+  $self->{'track_highlight_class'} = $highlight_track_uniq_id;
+
   ## Store this where the glyphset can find it later...
   $self->{'hover_label_class'} = $class;
 
   if ($hover) {
     my $fav       = $config->is_track_favourite($track);
+    my $hl        = $config->is_track_highlighted($track);
     my @renderers = grep !/default/i, @{$node->get('renderers') || []};
     my $subset    = $node->get('subset');
     my @r;
@@ -598,22 +609,27 @@ sub init_label {
         CORE::push @r, { url => "$url;$track=$val", val => $val, text => $text, current => $val eq $self->{'display'} };
       }
     }
-    
+
     $config->{'hover_labels'}->{$class} = {
-      header    => $name,
-      desc      => $desc,
-      class     => "$class $track _track_$track",
-      highlight => $track,
-      component => lc($component . ($config->get_parameter('multi_species') && $config->species ne $hub->species ? '_' . $config->species : '')),
-      renderers => \@r,
-      fav       => [ $fav, "$url;$track=favourite_" ],
-      off       => "$url;$track=off",
-      conf_url  => $self->species eq $hub->species ? $hub->url($hub->multi_params) . ";$config->{'type'}=$track=$self->{'display'}" : '',
-      subset    => $subset ? [ $subset, $hub->url('Config', { species => $config->species, action => $component, function => undef, __clear => 1 }), lc "modal_config_$component" ] : '',
+      header          => $name,
+      desc            => $desc,
+      class           => "$class $track $strand",
+      track_highlight => [ $highlight_track_uniq_id, $hl, "$url;updated=0;$track=highlight_" ],
+      component       => lc($component . ($config->get_parameter('multi_species') && $config->species ne $hub->species ? '_' . $config->species : '')),
+      renderers       => \@r,
+      fav             => [ $fav, "$url;updated=0;$track=favourite_" ],
+      off             => "$url;$track=off",
+      conf_url        => $self->species eq $hub->species ? $hub->url($hub->multi_params) . ";$config->{'type'}=$track=$self->{'display'}" : '',
+      subset          => $subset ? [ $subset, $hub->url('Config', { species => $config->species, action => $component, function => undef, __clear => 1 }), lc "modal_config_$component" ] : '',
     };
   }
  
   my $ch = $self->my_config('caption_height') || 0;
+  my $tooltip = sprintf '%s (%s)',
+                $config->species_defs->get_config($config->species, 'SPECIES_COMMON_NAME'),
+                $config->species_defs->get_config($config->species, 'SPECIES_SCIENTIFIC_NAME');
+
+
   $self->label($self->Text({
     text      => $text,
     font      => $font,
@@ -622,13 +638,15 @@ sub init_label {
     absolutey => 1,
     height    => $ch || $res[3],
     class     => "label $class",
-    alt       => $name,
+    alt       => $tooltip,
     hover     => $hover,
   }));
+
   if($img) {
     $img =~ s/^([\d@-]+)://; my $size = $1 || 16;
     my $offset = 0;
     $offset = $1 if $size =~ s/@(-?\d+)$//;
+
     $self->label_img($self->Sprite({
         z             => 1000,
         x             => 0,
@@ -641,7 +659,9 @@ sub init_label {
         absolutey     => 1,
         absolutewidth => 1,
         pixperbp      => 1,
-        alt           => '',
+        href          => '#',
+        class         => 'tooltip',
+        alt           => $tooltip,
     }));
   }
 }
@@ -738,6 +758,8 @@ sub recast_label {
     }
     $rows = $good_rows if defined $good_rows;
   }
+  ## Save this so we can use in new drawing code
+  $self->{'my_config'}->set('track_label_rows', scalar @$rows);
 
   my $max_width = max(map { $_->[1] } @$rows);
 
@@ -749,6 +771,7 @@ sub recast_label {
     width => $max_width,
     x => 0,
     y => 0,
+    track     => $self->{'track_highlight_class'} || $self->type,
     class     => $self->label->{'class'},
     alt       => $self->label->{'alt'},
     hover     => $self->label->{'hover'},
@@ -873,7 +896,7 @@ sub get_gd {
   
   return $cache{$font_key} if exists $cache{$font_key};
   
-  my $fontpath = $self->{'config'}->species_defs->ENSEMBL_STYLE->{'GRAPHIC_TTF_PATH'}. "/$font.ttf";
+  my $fontpath = $self->{'config'}->species_defs->get_font_path."$font.ttf";
   my $gd       = GD::Simple->new(400, 400);
   
   eval {
@@ -1332,99 +1355,10 @@ sub bump_sorted_row {
   return 1e9; # If we get to this point we can't draw the feature so return a very large number!
 }
 
-sub text_bounds {
-  my ($self,$text) = @_;
-
-  my ($w,$h) = (0,0);
-  foreach my $line (split("\n",$text)) {
-    my $info;
-    if($self->can('get_text_info')) {
-      $info = $self->get_text_info($line);
-    } else {
-      my @props = $self->get_text_width(0,"$line ",'',%{$self->text_details});
-      $info = { width  => $props[2],
-                height => $props[3]+4 };
-    }
-    $w = max($w,$info->{'width'});
-    $h += $info->{'height'};
-  }
-  return ($w,$h);
-}
-
-# Fast bumping for new drawing code. This method just sets _bstart and
-# _bend (the start and end co-ordinates for the purposes of bumping)
-# according to the feature start and end and any label start and end.
-# It then delegates to bumping to do_bump. If you want to set these
-# keys yourself, to customise the bumping (ag GlpyhSet_simpler does)
-# then feel free, and just call do_bump. For a description of the new
-# bumping algorithm see do_bump.
-# We deliberately compute label widths even if not displaying them.
-# This helps when, eg, we will later bump labels elsewhere, eg in the
-# gene renderer.
-sub mr_bump {
-  my ($self,$features,$show_label,$max,$strand,$moat) = @_;
-
-  $moat ||= 0;
-  my $pixperbp = $self->{'pix_per_bp'} || $self->scalex;
-  foreach my $f (@$features) {
-    my ($start,$end) = ($f->{'start'},$f->{'start'});
-    $start = $f->{'start'};
-    if($f->{'label'} && !$f->{'_lwidth'}) {
-      my ($width,$height) = $self->text_bounds($f->{'label'});
-      $f->{'_lheight'} = $height;
-      $f->{'_lwidth'} = $width/$pixperbp;
-    }
-    if($show_label<2) { $end = $f->{'end'}; }
-    if($show_label && $f->{'label'}) {
-      $end = max($end,ceil($start+$f->{'_lwidth'}));
-      my $overlap = $end-$max+1;
-      if($overlap>0) {
-        $start -= $overlap;
-        $end -= $overlap;
-      }
-    }
-    $f->{'_bstart'} = max(0,$start-$moat/$pixperbp);
-    $f->{'_bend'} = min($end+$moat/$pixperbp,$max);
-    if($strand and $f->{'strand'} and $strand != $f->{'strand'}) {
-      $f->{'_bskip'} = 1;
-    }
-  }
-  return $self->do_bump($features);
-}
-
-# Bump features according to their [_bstart,_bend], and set the row to a
-# new key _bump in that method. On large regions (in bp terms) this can
-# be orders of magnitude faster than the old algorithm.
-#
-# We can do this efficiently now, without tricks and big data structures
-# because we have all features in-hand, and so can choose the order of
-# applying them. Bumping amounts to an algorithm which attempts to add a
-# range to a list of existing ranges (rows), adding it to the first with
-# which there is no overlap. We sort the additions by start coordinate.
-# For each row, we store the largest end co-ord on that row to-date.
-# We add to the first row where our start is less than that row's end
-# (and then set it to our end).
-# If a row has an end greater than our start as we know it must have
-# been set by a feature with a start less than ours (because of the
-# order of addition), we know there is an overlap, and so this row is
-# not available to us. Conversely, if our start is greater than the
-# current end, we know that all features must be strictly to our left
-# (also because of the order) and so we guarantee no overlap. Therefore
-# this guarantees the minimum correct row.
-sub do_bump {
-  my ($self,$features) = @_;
-
-  my (@bumps,@rows);
-  foreach my $f (sort { $a->{'_bstart'} <=> $b->{'_bstart'} } @$features) {
-    $f->{'_bstart'} = 0 if $f->{'_bstart'} < 0;
-    next if $f->{'_bskip'};
-    my $row = 0;
-    while(($rows[$row]||=-1)>=$f->{'_bstart'}) { $row++; }
-    $rows[$row] = $f->{'_bend'};
-    $f->{'_bump'} = $row;
-  }
-  return scalar @rows;
-} 
+## Wrappers around bump utilities, which are now shared with new drawing code
+sub mr_bump { return EnsEMBL::Draw::Utils::Bump::mr_bump(@_); }
+sub do_bump { return EnsEMBL::Draw::Utils::Bump::do_bump(@_); }
+sub text_bounds { return EnsEMBL::Draw::Utils::Bump::text_bounds(@_); }
 
 sub max_label_rows {
   my $out = $_[0]->my_config('max_label_rows');
@@ -1454,9 +1388,14 @@ sub section_text {
 }
 
 sub section_height {
-  return 0 unless $_[0]->{'section_text'};
-  return 24 if @{ $_[0]->{'section_lines'}} == 1;
-  return 36;
+  my $self = shift;
+  my $section_height = 0;
+  if ($self->{'section_text'}) {
+    $section_height = @{$self->{'section_lines'}||[]} == 1 ? 24 : 36; 
+  }
+  ## Set in track config so we can retrieve it in new drawing code
+  $self->{'my_config'}->set('section_height', $section_height);
+  return $section_height;
 }
 
 

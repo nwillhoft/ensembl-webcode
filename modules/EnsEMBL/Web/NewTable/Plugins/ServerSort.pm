@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,6 +24,20 @@ package EnsEMBL::Web::NewTable::Plugins::ServerSort;
 use parent qw(EnsEMBL::Web::NewTable::Plugin);
 
 use EnsEMBL::Web::NewTable::Column;
+
+sub _sort_fn {
+  my ($aa,$bb,$columns,$sort,$keymeta,$cache) = @_;
+
+  my $c = 0;
+  foreach my $i (0..$#$sort) {
+    $cache->[$i]||={};
+    $c = $columns->[$i]->compare($aa->[$i],$bb->[$i],
+                                 $sort->[$i]->{'dir'},$keymeta,
+                                 $cache->[$i],$sort->[$i]->{'key'});
+    return $c if $c;
+  }
+  return 0;
+}
 
 sub extend_response {
   my ($self,$config,$wire) = @_;
@@ -49,17 +63,10 @@ sub extend_response {
     post => sub {
       my $keymeta = $config->keymeta();
       my @cache;
-      my @order = sort {
-        my $c = 0;
-        foreach my $i (0..$#sort) {
-          $cache[$i]||={};
-          $c = $columns[$i]->compare($a->[$i],$b->[$i],
-                                     $sort[$i]->{'dir'},$keymeta,
-                                     $cache[$i],$sort[$i]->{'key'});
-          last if $c; 
-        }   
-        $c; 
-      } @keys;
+      my $s = sub {
+        return _sort_fn($a,$b,\@columns,\@sort,$keymeta,\@cache,\@sort);
+      };
+      my @order = sort $s @keys;
       
       # Invert index
       my @out;

@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ sub buttons {
   my $self = shift;
   my $class = $self->hub->param("$self->{'url_param'}1") ? '' : 'pulse';
   return {
-    'url'     => $self->ajax_url('ajax', {multiselect => 1}),
+    'url'     => $self->ajax_url('ajax', {multiselect => 1, referer_action => $self->hub->action}),
     'caption' => $self->{'link_text'},
     'class'   => 'config _species_selector ' . $class,
     'modal'   => 1,

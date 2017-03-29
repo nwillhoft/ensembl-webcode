@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -280,7 +280,7 @@ sub get_alt_allele_link {
 sub count_alignments {
   my $self       = shift;
   my $cdb        = shift || 'DATABASE_COMPARA';
-  my $species    = $self->species;
+  my $species    = ucfirst($self->species_defs->get_config($self->species,"SPECIES_PRODUCTION_NAME"));
   my %alignments = $self->species_defs->multi($cdb, 'ALIGNMENTS');
   my $c          = { all => 0, pairwise => 0, multi => 0 };
 
@@ -338,6 +338,7 @@ sub get_slices {
   my $counter = 0;
   foreach (@slices) {
     next unless $_;
+
     my $name = $_->can('display_Slice_name') ? $_->display_Slice_name : $args->{species};
 
     my $cigar_line = $_->can('get_cigar_line') ? $_->get_cigar_line : "";
@@ -348,7 +349,7 @@ sub get_slices {
       slice             => $_,
       underlying_slices => $underlying_slices && $_->can('get_all_underlying_Slices') ? $_->get_all_underlying_Slices : [ $_ ],
       name              => $name,
-      display_name      => $self->get_slice_display_name($name, $_),
+      display_name      => $self->get_slice_display_name($self->hub->species_defs->production_name_mapping($name), $_),
       cigar_line        => $cigar_line,
     };
     if ($name eq 'Ancestral_sequences') {
@@ -417,7 +418,7 @@ sub get_alignments {
   foreach (grep { /species_$align/ } $hub->param) {
     if ($hub->param($_) eq 'yes') {
       /species_${align}_(.+)/;
-      push @selected_species, $1 unless $1 =~ /$species/i;
+      push @selected_species, $1 unless $1 =~ /^$species$/i;
     }
   }
   unshift @selected_species, lc $species unless $hub->species_defs->multi_hash->{'DATABASE_COMPARA'}{'ALIGNMENTS'}{$align}{'class'} =~ /pairwise/;

@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -324,6 +324,22 @@ sub process {
       map { $params->{$_} = 1 if $_ } $hub->param('param');
       map { $params->{'misc_set'}->{$_} = 1 if $_ } $hub->param('misc_set'); 
       $self->params = $params;
+      my $access_info = 'referer=';
+      if ($hub->referer->{'absolute_url'}) {
+        $hub->referer->{'absolute_url'} =~ m/^http(s)?\:\/\/([^\/]+)/;
+        my $referer = $2;
+        if ($hub->species_defs->ENSEMBL_SERVERNAME eq $referer) {
+          $access_info .= "same--$referer"
+        }
+        else {
+          $access_info .= "different--$referer"
+        }
+      }
+      else {
+        $access_info .= 'notfound--notfound'
+      }
+
+      warn "ExporterEvent--$access_info--" . join('-', ($o, $hub->param('_format'))) . '-' . join(',',sort keys %$params);
       $outputs->{$o}();
     }
   }
@@ -370,9 +386,11 @@ sub fasta {
       peptide => sub { my ($t, $id, $type) = @_; eval { [[ "$id peptide: " . $t->translation->stable_id . " pep:$type", $t->translate->seq ]] }},
       utr3    => sub { my ($t, $id, $type) = @_; eval { [[ "$id utr3:$type", $t->three_prime_utr->seq ]] }},
       utr5    => sub { my ($t, $id, $type) = @_; eval { [[ "$id utr5:$type", $t->five_prime_utr->seq ]] }},
-      exon    => sub { my ($t, $id, $type) = @_; eval { [ map {[ "$id " . $_->id . " exon:$type", $_->seq->seq ]} @{$t->get_all_Exons} ] }},
+      exon    => sub { my ($t, $id, $type) = @_; eval { [ map {[ "$id " . $_->stable_id . " exon:$type", $_->seq->seq ]} @{$t->get_all_Exons} ] }},
       intron  => sub { my ($t, $id, $type) = @_; eval { [ map {[ "$id intron " . $intron_id++ . ":$type", $_->seq ]} @{$t->get_all_Introns} ] }}
     };
+
+
     
     foreach (@$trans_objects) {
       my $transcript = $_->Obj;
@@ -811,9 +829,13 @@ sub feature {
   else {
     @mapping_result = qw(seqid source type start end score strand phase);
   }
+  my $source = $feature->can('source_tag') ? $feature->source_tag  : $feature->can('source') ? $feature->source : 'Ensembl';
+  if (ref($source) eq 'Bio::EnsEMBL::Variation::Source') {
+    $source = $source->name;
+  }
   %vals = (%vals, (
      type   => $type || ($feature->can('primary_tag') ? $feature->primary_tag : 'sequence_feature'),
-     source => $feature->can('source_tag') ? $feature->source_tag  : $feature->can('source') ? $feature->source : 'Ensembl',
+     source => $source,
      score  => $feature->can('score') ? $feature->score : '.',
      phase  => '.'
    ));   

@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,12 +38,9 @@ use strict;
 use warnings;
 no warnings "uninitialized";
 
-use EnsEMBL::Web::Cache;
 use HTML::Entities qw(encode_entities);
 use EnsEMBL::Web::REST;
 use base qw(EnsEMBL::Web::Object);
-
-our $MEMD = EnsEMBL::Web::Cache->new;
 
 sub availability {
   my $self = shift;
@@ -73,9 +70,10 @@ sub availability {
 }
 
 sub counts {
-  my $self = shift;
-  my $obj  = $self->Obj;
-  my $hub  = $self->hub;
+  my $self  = shift;
+  my $obj   = $self->Obj;
+  my $hub   = $self->hub;
+  my $cache = $hub->cache;
 
   return {} unless $obj->isa('Bio::EnsEMBL::Variation::Variation');
 
@@ -84,7 +82,7 @@ sub counts {
   $key   .= $vf . '::' if $vf;
 
   my $counts = $self->{'_counts'};
-  $counts ||= $MEMD->get($key) if $MEMD;
+  $counts ||= $cache->get($key) if $cache;
 
   unless ($counts) {
     $counts = {};
@@ -100,13 +98,20 @@ sub counts {
     $counts->{'locations'}   = scalar @{$self->get_variation_features};
     ($counts->{'population_freqs'}, $counts->{'populations'}) = @{$self->count_populations};
 
-    $MEMD->set($key, $counts, undef, 'COUNTS') if $MEMD;
+    $cache->set($key, $counts, undef, 'COUNTS') if $cache;
     $self->{'_counts'} = $counts;
   }
 
   return $counts;
 }
 sub count_ega {
+  my $self = shift;
+  my @ega_links = @{$self->get_ega_links||[]};
+  my $counts = scalar @ega_links || 0;
+  return $counts;
+}
+
+sub get_ega_links {
   my $self = shift;
   my @ega_links = @{$self->get_external_data};
 
@@ -118,9 +123,7 @@ sub count_ega {
     my $end   = $vf_object->seq_region_end;
     @ega_links = grep {$_->seq_region_name eq $chr && $_->seq_region_start == $start && $_->seq_region_end == $end} @ega_links;
   }
-
-  my $counts = scalar @ega_links || 0;
-  return $counts;
+  return \@ega_links;
 }
 
 sub count_features {
@@ -1674,7 +1677,7 @@ sub hgvs_url {
       $p->{'t'}      = $refseq.$version;
     } else { # $type eq c: cDNA position, no $type: special cases where the variation falls in e.g. a pseudogene. Default to transcript
       $p->{'type'}   = 'Transcript';
-      $p->{'action'} = ($hub->species_defs->databases->{'DATABASE_VARIATION'}->{'#STRAINS'} > 0 ? 'Population' : 'Summary');
+      $p->{'action'} = ($hub->species_defs->databases->{'DATABASE_VARIATION'} && $hub->species_defs->databases->{'DATABASE_VARIATION'}->{'#STRAINS'} > 0 ? 'Population' : 'Summary');
       $p->{'t'}      = $refseq.$version;
     }
   }

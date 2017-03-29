@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ package EnsEMBL::Web::Apache::Handlers;
 
 use strict;
 use warnings;
+no warnings qw(uninitialized);
 
 use Apache2::Const qw(:common :http :methods);
 use Apache2::SizeLimit;
@@ -34,8 +35,6 @@ use Fcntl ':flock';
 use Sys::Hostname;
 use Time::HiRes qw(time);
 use POSIX qw(strftime);
-
-use SiteDefs;
 
 use Bio::EnsEMBL::Registry;
 use Bio::EnsEMBL::DBSQL::DBAdaptor;
@@ -61,7 +60,7 @@ sub get_postread_redirect_uri {
 }
 
 sub get_rewritten_uri {
-  ## Recieves the current URI and returns a new URI in case it has to be rewritten
+  ## Receives the current URI and returns a new URI in case it has to be rewritten
   ## The same request itself is handled according to the rewritten URI instead of making an external redirect request
   ## @param URI string
   ## @return URI string if modified, undef otherwise
@@ -69,7 +68,7 @@ sub get_rewritten_uri {
 }
 
 sub get_redirect_uri {
-  ## Recieves the current URI and returns a new URI in case a PERMANENT external HTTP redirect has to be performed on that
+  ## Receives the current URI and returns a new URI in case a PERMANENT external HTTP redirect has to be performed on that
   ## @param URI string
   ## @return URI string if redirection required, undef otherwise
   ## In a plugin, use this function with PREV to add plugin specific rules
@@ -81,19 +80,38 @@ sub get_redirect_uri {
   }
 
   ## Fix URL for V/SV Explore pages
-  if ($uri =~ m|/Variation/Summary|) {
+  if ($uri =~ m|Variation/Summary|) {
     return $uri =~ s/Summary/Explore/r;
   }
 
+  if ($uri =~ /\/psychic/) {
+    return $uri =~ s/psychic/Psychic/r;
+  }
+
+  ## quick fix for solr autocomplete js bug
+  if ($uri =~ /undefined\//) {
+    return $uri =~ s/undefined\///r;
+  }
+
   ## Trackhub short URL
-  if ($uri =~ m|^/trackhub\?|i) {
-    return $uri = s/trackhub/UserData\/TrackHubRedirect/r;
+  if ($uri =~ /^\/Trackhub(\/|\?|$)/i) {
+    return $uri =~ s/trackhub/UserData\/TrackHubRedirect/ri;
+  }
+
+  ## VEP shortlink
+  if ($uri =~ m|^/vep$|) {
+    return '/info/docs/tools/vep/index.html';
   }
 
   ## For stable id URL (eg. /id/ENSG000000nnnnnn) or malformed Gene URL with g param
   if ($uri =~ m/^\/(id|loc)\/(.+)/i || ($uri =~ m|^/Gene\W| && $uri =~ /[\&\;\?]{1}(g)=([^\&\;]+)/)) {
     return stable_id_redirect_uri($1 eq 'loc' ? 'loc' : 'id', $2);
   }
+
+  ## Redirect to live site if this instance has no Doxygen files
+  if ($uri =~ /Doxygen/ && !(-e $species_defs->ENSEMBL_SERVERROOT.'/public-plugins/docs/htdocs'.$uri)) {
+    return 'http://www.ensembl.org/'.$uri;
+  } 
 
   return undef;
 }
@@ -229,6 +247,16 @@ sub get_sub_handlers {
   return @combinations;
 }
 
+sub set_remote_ip {
+  ## Sets the ENSEMBL_REMOTE_ADDR env variable to the possibly most accurate client's address
+  my $r   = shift;
+  my $ip  = $r->subprocess_env('HTTP_X_FORWARDED_FOR') || $r->subprocess_env('HTTP_X_CLUSTER_CLIENT_IP') || $r->subprocess_env('HTTP_CLIENT_IP') || $r->subprocess_env('REMOTE_ADDR') || '';
+
+  ($ip)   = split /\s*\,\s*/, $ip;
+
+  $r->subprocess_env('ENSEMBL_REMOTE_ADDR', $ip);
+}
+
 sub http_redirect {
   ## Perform an http redirect
   ## @param Apache2::RequestRec request object
@@ -238,7 +266,6 @@ sub http_redirect {
   my ($r, $redirect_uri, $permanent) = @_;
   $r->uri($redirect_uri);
   $r->headers_out->add('Location' => $r->uri);
-  $r->child_terminate; # TODO really needed?
 
   return $permanent ? HTTP_MOVED_PERMANENTLY : HTTP_MOVED_TEMPORARILY;
 }
@@ -269,7 +296,7 @@ sub childInitHandler {
   ## @param APR::Pool object
   ## @param Apache2::ServerRec server object
   ## This handler only adds an entry to the logs
-  warn sprintf "[%s] Child initialised: %d\n", time_str, $$ if $SiteDefs::ENSEMBL_DEBUG_FLAGS && $SiteDefs::ENSEMBL_DEBUG_HANDLER_ERRORS;
+  warn sprintf "[%s] Child initialised: %d\n", time_str, $$ if $SiteDefs::ENSEMBL_DEBUG_HANDLER_ERRORS;
 
   return OK;
 }
@@ -283,6 +310,9 @@ sub postReadRequestHandler {
 
   # VOID request to populate %ENV
   $r->subprocess_env;
+
+  # Set possibly most accurate remote IP address
+  set_remote_ip($r);
 
   # Any redirect needs to be performed at this stage?
   if (my $redirect_uri = get_postread_redirect_uri($r)) {
@@ -362,7 +392,7 @@ sub handler {
   my $path_seg  = [ grep { $_ ne '' } split '/', $path ];
 
   # other species-like path segments
-  if (!$species && grep /$path_seg->[0]/, qw(Multi common)) {
+  if (!$species && $path_seg->[0] && grep $_ eq $path_seg->[0], qw(Multi common)) {
     $species = shift @$path_seg;
   }
 
@@ -430,24 +460,25 @@ sub cleanupHandler {
   ## This handler gets called immediately after the request has been served (the client went away) and before the request object is destroyed.
   ## Any time consuming logging process should be done in this handler since the request connection has actually been closed by now.
   ## @param Apache2::RequestRec request object
-  my $r = shift;
+  my $r     = shift;
+  my $uuri  = $r->unparsed_uri;
 
-  return OK if $r->unparsed_uri =~ m/^(\*|\/Crash|\/Error)/;
+  return OK if !defined $uuri || $uuri =~ m/^(\*|\/Crash|\/Error)/;
 
   # run any plugged-in code
   request_end_hook($r);
 
   # no need to go further if debug flag is off
-  return OK unless $SiteDefs::ENSEMBL_DEBUG_FLAGS && $SiteDefs::ENSEMBL_DEBUG_HANDLER_ERRORS;
+  return OK unless $SiteDefs::ENSEMBL_DEBUG_HANDLER_ERRORS;
 
   # if LOG_REQUEST_IGNORE is set true by the code, don't log the request url
   return OK if $r->subprocess_env('LOG_REQUEST_IGNORE');
 
   my $start_time  = $r->subprocess_env('LOG_REQUEST_START');
-  my $time_taken  = $r->subprocess_env('LOG_REQUEST_TIME');
+  my $time_taken  = $r->subprocess_env('LOG_REQUEST_TIME') || 0;
   my $uri         = $r->subprocess_env('LOG_REQUEST_URI');
 
-  warn sprintf "REQUEST(%s): [served at %s by %s in %sms] %s\n", $r->method_number == M_POST ? 'P' : 'G', time_str($start_time), $$, int(1000*$time_taken) || '0', $uri;
+  warn sprintf "REQUEST(%s): [served at %s by %s in %sms] %s\n", $r->method_number == M_POST ? 'P' : 'G', time_str($start_time), $$, int(1000*$time_taken), $uri;
 
   if ($time_taken >= $SiteDefs::ENSEMBL_LONGPROCESS_MINTIME) {
 
@@ -457,7 +488,7 @@ sub cleanupHandler {
       "LONG PROCESS: %12s AT: %s  TIME: %s  SIZE: %s\nLONG PROCESS: %12s REQ: %s\nLONG PROCESS: %12s IP: %s  UA: %s\n",
       $$, time_str($start_time), $time_taken, $size,
       $$, $uri,
-      $$, $r->subprocess_env('HTTP_X_FORWARDED_FOR'), $r->headers_in->{'User-Agent'}
+      $$, $r->subprocess_env('ENSEMBL_REMOTE_ADDR') || 'unknown', $r->headers_in->{'User-Agent'} || 'unknown'
     );
   }
 
@@ -471,7 +502,7 @@ sub childExitHandler {
   ## This handler only adds an entry to the logs
   my ($p, $s) = @_;
 
-  warn sprintf "[%s] Child exited: %d\n", time_str, $$ if $SiteDefs::ENSEMBL_DEBUG_FLAGS && $SiteDefs::ENSEMBL_DEBUG_HANDLER_ERRORS;
+  warn sprintf "[%s] Child exited: %d\n", time_str, $$ if $SiteDefs::ENSEMBL_DEBUG_HANDLER_ERRORS;
 
   return OK;
 }

@@ -1,6 +1,6 @@
 /*
  * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
- * Copyright [2016] EMBL-European Bioinformatics Institute
+ * Copyright [2016-2017] EMBL-European Bioinformatics Institute
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,21 +35,23 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
     this.altKeyDragging     = false;
     this.allowHighlight     = !!(window.location.pathname.match(/\/Location\//));
     this.locationMarkingArea = false;
-    
+    this.highlightedTracks  = {};
+
     function resetOffset() {
       delete this.imgOffset;
     }
     
-    Ensembl.EventManager.register('highlightImage',     this, this.highlightImage);
-    Ensembl.EventManager.register('mouseUp',            this, this.dragStop);
-    Ensembl.EventManager.register('hashChange',         this, this.hashChange);
-    Ensembl.EventManager.register('changeFavourite',    this, this.changeFavourite);
-    Ensembl.EventManager.register('imageResize',        this, function () { if (this.xhr) { this.xhr.abort(); } this.getContent(); });
-    Ensembl.EventManager.register('windowResize',       this, resetOffset);
-    Ensembl.EventManager.register('ajaxLoaded',         this, resetOffset); // Adding content could cause scrollbars to appear, changing the offset, but this does not fire the window resize event
-    Ensembl.EventManager.register('changeWidth',        this, function () { this.params.updateURL = Ensembl.updateURL({ image_width: false }, this.params.updateURL); Ensembl.EventManager.trigger('queuePageReload', this.id); });
-    Ensembl.EventManager.register('highlightAllImages', this, function () { if (!this.align) { this.highlightAllImages(); } });
-    Ensembl.EventManager.register('markLocation',       this, this.markLocation);
+    Ensembl.EventManager.register('highlightImage',           this, this.highlightImage);
+    Ensembl.EventManager.register('mouseUp',                  this, this.dragStop);
+    Ensembl.EventManager.register('hashChange',               this, this.hashChange);
+    Ensembl.EventManager.register('changeFavourite',          this, this.changeFavourite);
+    // Ensembl.EventManager.register('changeHighlightTrackIcon', this, this.changeHighlightTrackIcon);
+    Ensembl.EventManager.register('imageResize',              this, function () { if (this.xhr) { this.xhr.abort(); } this.getContent(); });
+    Ensembl.EventManager.register('windowResize',             this, resetOffset);
+    Ensembl.EventManager.register('ajaxLoaded',               this, resetOffset); // Adding content could cause scrollbars to appear, changing the offset, but this does not fire the window resize event
+    Ensembl.EventManager.register('changeWidth',              this, function () { this.params.updateURL = Ensembl.updateURL({ image_width: false }, this.params.updateURL); Ensembl.EventManager.trigger('queuePageReload', this.id); });
+    Ensembl.EventManager.register('highlightAllImages',       this, function () { if (!this.align) { this.highlightAllImages(); } });
+    Ensembl.EventManager.register('markLocation',             this, this.markLocation);
   },
   
   init: function () {
@@ -59,6 +61,7 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
     this.base();
     
     this.imageConfig        = $('input.image_config', this.el).val();
+    this.viewConfig         = $('input.view_config', this.el).val();
     this.lastImage          = Ensembl.images.total > 1 && this.el.parents('.image_panel')[0] === Ensembl.images.last;
     this.hashChangeReload   = this.lastImage || $('.hash_change_reload', this.el).length;
     this.zMenus             = {};
@@ -91,7 +94,8 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
     this.initSelector();
     this.highlightLastUploadedUserDataTrack();
     this.markLocation(Ensembl.markedLocation);
-    
+    this.updateHighlightedTracks();
+
     if (!this.vertical) {
       this.makeResizable();
     }
@@ -174,12 +178,13 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
         url: this.href,
         type: 'post',
         success: function() {
-          Ensembl.EventManager.triggerSpecific('resetConfig', 'modal_config_' + this.id.toLowerCase());
+          Ensembl.EventManager.trigger('resetConfig');
           Ensembl.EventManager.trigger('resetMessage');
           this.getContent();
         },
         data: {
-          image_config: panel.imageConfig
+          image_config: panel.imageConfig,
+          view_config: panel.viewConfig
         }
       });
     });
@@ -349,22 +354,22 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
         $(this).toggleClass('drag_select_pointer', !(!area || area.a.klass.label || area.a.klass.drag || area.a.klass.vdrag || area.a.klass.hover));
 
         // Add helptips on navigation controls in multi species view
-        if (area && area.a && area.a.klass.nav) {
+        if (area && area.a && (area.a.klass.nav || area.a.klass.tooltip)) {
           if (tip !== area.a.attrs.alt) {
             tip = area.a.attrs.alt;
             
-            if (!panel.elLk.navHelptip) {
-              panel.elLk.navHelptip = $('<div class="ui-tooltip helptip-bottom"><div class="ui-tooltip-content"></div></div>');
+            if (!panel.elLk.helpTip) {
+              panel.elLk.helpTip = $('<div class="ui-tooltip helptip-bottom"><div class="ui-tooltip-content"></div></div>');
             }
             
-            panel.elLk.navHelptip.children().html(tip).end().appendTo('body').position({
+            panel.elLk.helpTip.children().html(tip).end().appendTo('body').position({
               of: { pageX: panel.imgOffset.left + area.l + 10, pageY: panel.imgOffset.top + area.t - 48, preventDefault: true }, // fake an event
               my: 'center top'
             });
           }
         } else {
-          if (panel.elLk.navHelptip) {
-            panel.elLk.navHelptip.detach().css({ top: 0, left: 0 });
+          if (panel.elLk.helpTip) {
+            panel.elLk.helpTip.detach().css({ top: 0, left: 0 });
           }
         }
       },
@@ -374,8 +379,8 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
 
         if (e.relatedTarget) {
 
-          if (panel.elLk.navHelptip) {
-            panel.elLk.navHelptip.detach();
+          if (panel.elLk.helpTip) {
+            panel.elLk.helpTip.detach();
           }
 
         }
@@ -467,9 +472,6 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
         $(this).find('._dyna_load').removeClass('_dyna_load').dynaLoad();
         var associated_li = panel.elLk.boundaries.find('.' + $(this).find('.hl-icon-highlight').data('highlightTrack'))
         associated_li.addClass('hover');
-        if(associated_li.hasClass('_new_userdata')) {
-          panel.removeUserDataHighlight();
-        }
       },
       mouseleave: function () {
         panel.elLk.boundaries.find('.' + $(this).find('.hl-icon-highlight').data('highlightTrack')).removeClass('hover');
@@ -484,9 +486,11 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
         }
         // show/hide hover label
         $(this).find('.hover_label')
-               .toggle()
+               .toggle().off()
                .click(function(e){
-                  e.stopPropagation && e.stopPropagation();
+                  if (e.target.nodeName !== "A" || $(e.target).hasClass('config')) {
+                    e.stopPropagation();
+                  }
                });
 
        $(document).off('.hoverMenuRemove').on('click.hoverMenuRemove', function(e) {
@@ -509,7 +513,7 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
           e.stopPropagation(); // aviod triggering click on parent _label_layer
           $(document).off('.hoverMenuRemove');
         }
-      });
+      }).externalLinks();
 
 
     // apply css positions to the hover layers
@@ -588,19 +592,15 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
           });
         }
       });
-
-      // On highlight icon click toggle highlight
-      $(this).find('.hl-icon-highlight').on('click', function(e) {
-        var highlight_class = 'li.' + $(this).data('highlightTrack');
-        var track_element = $($(panel.elLk.boundaries).find(highlight_class));
-        panel.toggleHighlight(track_element);
-        // highlight the track highlight icon on all the highlighted tracks (f/r generally)
-        $('.hover_label.' + $(this).data('highlightTrack')).find('.hl-icon-highlight').toggleClass('selected');
-      });
     })
+    // On highlight icon click toggle highlight
+    .find('.hl-icon-highlight').on('click', function(e) {
+      e.preventDefault();
+      panel.toggleHighlight($(this).data('highlightTrack'));
+    }).end()
 
     // init config tab, fav icon and close icon
-    .find('a.config').off().on('click', function (e) {
+    .find('a.config').on('click', function (e) {
       e.preventDefault();
       panel.handleConfigClick(this);
     }).end()
@@ -611,55 +611,102 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
     });
   },
 
-  toggleHighlight: function(element) {
-    $(element) && $(element).toggleClass('track_highlight _highlight_on');
+  toggleHighlight: function(uniq_track_ids, _on) {
+    var panel = this;
+
+    if (!Array.isArray(uniq_track_ids)) {
+      uniq_track_ids = [uniq_track_ids];
+    }
+
+    $.each(uniq_track_ids, function(i, tr) {
+      track = tr && tr.split('.')[0];
+      var track_element = $($(panel.elLk.boundaries).find('li.' + track));
+
+      if (!track_element) {
+        return;
+      }
+
+      if (_on) {
+        $(track_element) && $(track_element).addClass('track_highlight');  
+      }
+      else {
+        if (_on !== '' && _on !== undefined) {
+          $(track_element) && $(track_element).removeClass('track_highlight');
+        }
+        else {
+          $(track_element) && $(track_element).toggleClass('track_highlight');
+        }
+      }      
+    });
+
+    this.updateHighlightedTracks();
+  },
+
+  updateHighlightedTracks: function() {
+
+    var panel = this;
+    // Get tracks (which include strands)
+    // e.g. track seq has 2 associated tracks - seq.f and seq.r
+    $.each(panel.elLk.hoverLabels, function(i, tr) {
+      var uniq_tr_id = $(tr).find('.hl-icon-highlight').data('highlightTrack');
+      var li = $('li', panel.elLk.boundaries).filter('.track_highlight.' + uniq_tr_id);
+      li.length ? panel.highlightedTracks[uniq_tr_id] = 1 : panel.highlightedTracks[uniq_tr_id] && delete panel.highlightedTracks[uniq_tr_id];
+    });
+    
+    this.updateExportButton();
   },
 
   highlightLastUploadedUserDataTrack: function() {
     var panel = this;
+    var tracks = [];
+
+    this.elLk.boundaries.find('li._new_userdata.usertrack_highlight').on('mouseover', function() {
+      panel.removeUserDataHighlight();
+    })
+
+    // Traverse li to find adjacent tracks to add group border
     var count = 0;
-    var adjacent_tracks = [];
     this.elLk.boundaries.children().each(function (i) {
       var li  = $(this);
       if ($(this).hasClass('_new_userdata')) {
-        adjacent_tracks.push(li);
+        tracks.push(li);
         count++;
       }
       else {
-        // If there are more than one tracks adjacent to each other
-        if(count > 1 && adjacent_tracks.length > 1) {
-          $(adjacent_tracks).each(function(i, li_element) {
-            // Top track
-            if (i == 0) {
-              $(li_element).addClass('usertrack_highlight_border_top usertrack_highlight_border_left usertrack_highlight_border_right');
-            }
-            // Middle tracks
-            else if (i !== adjacent_tracks.length - 1 ) {
-              $(li_element).addClass('usertrack_highlight_border_left usertrack_highlight_border_right');
-            }
-            // Bottom track
-            else {
-              $(li_element).addClass('usertrack_highlight_border_bottom usertrack_highlight_border_left usertrack_highlight_border_right');
-            }
-
-            $(li_element).on('mouseenter', function() {
-              panel.removeUserDataHighlight();
-            })
-          })
-        }
-        else {
-          // Single tracks
-          adjacent_tracks.length == 1 &&
-            $(adjacent_tracks[0]).addClass('usertrack_highlight_border_top usertrack_highlight_border_bottom usertrack_highlight_border_left usertrack_highlight_border_right')
-                                 .on('mouseenter', function() {
-                                    panel.removeUserDataHighlight();
-                                 })
-        }
         // Reset array so that you get a new set of tracks
-        adjacent_tracks = [];
-        count = 0;
+        panel.addHighlightClasses(tracks);
+        tracks = [];
+        count++;
       }
+      // In case last li track is a _new_userdata (which misses the else part above)
+      (tracks.length && panel.elLk.boundaries.children().length === count) && panel.addHighlightClasses(tracks)
     });
+
+  },
+
+  addHighlightClasses: function(tracks) {
+    // If there are more than one tracks adjacent to each other
+    if(tracks.length > 1) {
+      $(tracks).each(function(i, li_element) {
+        // Top track
+        if (i == 0) {
+          $(li_element).addClass('usertrack_highlight_border_top usertrack_highlight_border_left usertrack_highlight_border_right');
+        }
+        // Middle tracks
+        else if (i !== tracks.length - 1 ) {
+          $(li_element).addClass('usertrack_highlight_border_left usertrack_highlight_border_right');
+        }
+        // Bottom track
+        else {
+          $(li_element).addClass('usertrack_highlight_border_bottom usertrack_highlight_border_left usertrack_highlight_border_right');
+        }
+      })
+    }
+    else {
+      // Single tracks
+      tracks.length == 1 &&
+        $(tracks[0]).addClass('usertrack_highlight_border_top usertrack_highlight_border_bottom usertrack_highlight_border_left usertrack_highlight_border_right');
+    }
 
   },
 
@@ -678,13 +725,16 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
     var href    = link.href.split(';');
     var update  = href.pop().split('='); // update = [ trackId, renderer ]
 
-    var fav     = '';
+    var selected     = '';
     var imgConf = {};
+    var hasFav = $link.hasClass('favourite');
+    var hasHighlight = $link.hasClass('hl-icon-highlight');
 
-    if ($link.hasClass('favourite')) {
-      fav = $link.hasClass('selected') ? 'off' : 'on';
-      href.push(update[0] + '=' + update[1] + fav);
-      Ensembl.EventManager.trigger('changeFavourite', update[0], fav === 'on');
+    if (hasFav || hasHighlight) {
+      selected = $link.hasClass('selected') ? 'off' : 'on';
+      href.push(update[0] + '=' + update[1] + selected);
+      hasFav && Ensembl.EventManager.trigger('changeFavourite', update[0], selected === 'on');
+      this.changeHighlightTrackIcon(update[0], selected === 'on');
     } else {
       $link.parents('._label_layer').addClass('hover_label_spinner');
       imgConf[update[0]] = {'renderer' : update[1]};
@@ -698,6 +748,7 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
       success: function (json) {
         if (json.updated) {
           this.panel.changeConfiguration(config, this.track, this.update);
+          this.panel.updateExportButton();
         }
       }
     });
@@ -875,8 +926,8 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
 
   sortUpdate: function(e, ui) {
 
-    var prev  = (ui.item.prev().prop('className') || '').replace(' ', '.');
-    var track = ui.item.prop('className').replace(' ', '.');
+    var prev  = $.trim((ui.item.prev().prop('className') || '')).replace(' ', '.');
+    var track = $.trim(ui.item.prop('className')).replace(' ', '.');
 
     Ensembl.EventManager.triggerSpecific('changeTrackOrder', 'modal_config_' + this.id.toLowerCase(), track, prev);
 
@@ -970,7 +1021,12 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
   changeFavourite: function (trackId, on) {
     this.elLk.hoverLabels.filter('.' + trackId).find('a.favourite').toggleClass('selected', on);
   },
-  
+
+  changeHighlightTrackIcon: function (trackId, on) {
+    var panel = this;
+    panel.elLk.hoverLabels.filter('.' + trackId).find('a.hl-icon-highlight').toggleClass('selected', on);
+  },
+
   dragStart: function (e) {
     var panel = this;
     
@@ -1133,7 +1189,7 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
       area = this.getArea(coords);
     }
 
-    if (!area || area.a.klass.label) {
+    if (!area || area.a.klass.label || area.a.klass.tooltip) {
       return;
     }
     
@@ -1518,12 +1574,15 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
     extra = $.isEmptyObject(extra) ? false : encodeURIComponent(JSON.stringify(extra));
 
     this.elLk.exportButton.attr('href', function() {
-      return Ensembl.updateURL({extra: extra}, this.href);
+      return Ensembl.updateURL({extra: extra, decodeURL: 1}, this.href);
     });
   },
 
   getExtraExportParam: function () {
     var extra = {};
+
+    var flag = 0;
+    extra.highlightedTracks = Object.keys(this.highlightedTracks);
 
     if (!$.isEmptyObject(this.boxCoords)) {
       extra.boxes = this.boxCoords;
@@ -1546,7 +1605,6 @@ Ensembl.Panel.ImageMap = Ensembl.Panel.Content.extend({
         delete extra.mark;
       }
     }
-
     return extra;
   },
 

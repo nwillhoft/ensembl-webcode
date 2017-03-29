@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -134,12 +134,13 @@ sub initialize {
     };
   }
   
-  return (\@data, $config,$self->describe_filter($config));
+  return (\@data, $config);
 }
 
 sub content {
   my $self = shift;
-  my ($data, $config,$html) = $self->initialize;
+  my ($data, $config) = $self->initialize;
+  my $html = $self->describe_filter($config);
   my $table = $self->new_table([
       { key => 'Number',     title => 'No.',           width => '6%',  align => 'left' },
       { key => 'exint',      title => 'Exon / Intron', width => '15%', align => 'left' },
@@ -335,7 +336,7 @@ sub add_variations {
   my (%href, %class);
   
   foreach my $transcript_variation (map $_->[2], sort { $b->[0] <=> $a->[0] || $b->[1] <=> $a->[1] } map [ $_->variation_feature->length, $_->most_severe_OverlapConsequence->rank, $_ ], @transcript_variations) {
-    my $consequence = @{$transcript_variation->consequence_type}->[0];
+    my $consequence = $transcript_variation->consequence_type->[0];
     my %cf = %{$config->{'consequence_filter'}||{}};
     delete $cf{'off'} if exists $cf{'off'};
     if(%cf) {
@@ -442,6 +443,9 @@ sub make_view {
 
 sub build_sequence {
   my ($self, $sequence, $config) = @_;
+  $self->view->reset;
+  $self->view->new_sequence;
+  $self->view->sequences->[0]->legacy($sequence);
   $self->view->output->template('<pre class="text_sequence exon_sequence">%s</pre>');
   return $self->SUPER::build_sequence([ $sequence ], $config,1);
 }

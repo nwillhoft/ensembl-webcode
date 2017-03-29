@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -168,6 +168,8 @@ sub init_cache {
 
   # init env cache tags
   $ENV{'CACHE_TAGS'} = {};
+
+  $self->add_cache_tags({'species' => sprintf('SPECIES[%s]', $self->species)}) if $self->species;
 
   $self->add_cache_tags({
     'page'    => sprintf('PAGE[%s]', $self->page_type),
@@ -364,6 +366,15 @@ sub referer {
   }
 
   return $self->{'referer'};
+}
+
+sub is_ajax_request {
+  ## Checks if the request is an AJAX request
+  ## @return 1 or 0 accordingly
+  my $self = shift;
+  return 1 if (($self->r->headers_in->{'X-Requested-With'} || '') eq 'XMLHttpRequest');
+  return 1 if (($self->query_param('X-Requested-With') || '') eq 'iframe');
+  return 0;
 }
 
 sub configuration {

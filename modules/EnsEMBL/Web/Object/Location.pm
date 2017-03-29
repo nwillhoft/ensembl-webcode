@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,8 +33,6 @@ package EnsEMBL::Web::Object::Location;
 use strict;
 
 use Bio::EnsEMBL::Variation::DBSQL::LDFeatureContainerAdaptor;
-
-use EnsEMBL::Web::Cache;
 
 use base qw(EnsEMBL::Web::Object);
 
@@ -107,16 +105,15 @@ sub implausibility {
   return $self->{'_implausibility'};
 }
 
-our $MEMD = EnsEMBL::Web::Cache->new;
-
 sub counts {
-  my $self = shift;
-  
-  my $obj = $self->Obj;
-  my $key = '::COUNTS::LOCATION::' . $self->species . '::' . $self->slice->seq_region_name;
-  my $counts = $self->{'_counts'};
-  $counts ||= $MEMD->get($key) if $MEMD;
- 
+  my $self      = shift;
+
+  my $obj       = $self->Obj;
+  my $cache     = $self->hub->cache;
+  my $key       = '::COUNTS::LOCATION::' . $self->species . '::' . $self->slice->seq_region_name;
+  my $counts    = $self->{'_counts'};
+     $counts  ||= $cache->get($key) if $cache;
+
   if (!$counts) {
     my %synteny = $self->species_defs->multi('DATABASE_COMPARA', 'SYNTENY');
     my $alignments = $self->count_alignments;
@@ -131,7 +128,7 @@ sub counts {
     
     $counts = {%$counts, %{$self->_counts}};
     
-    $MEMD->set($key, $counts, undef, 'COUNTS') if $MEMD;
+    $cache->set($key, $counts, undef, 'COUNTS') if $cache;
     $self->{'_counts'} = $counts;
   }
 
@@ -1653,6 +1650,48 @@ sub get_allele_genotype_colours {
                  'T' => '<span style="color:red">T</span>'
                 );
   return \%colours;
+}
+
+# Return alignments based on hierarchy of methods
+sub filter_alignments_by_method {
+  my $self       = shift;
+  my $alignments = shift || {};
+
+  # Convert hash with species_set_id as the keys
+  my $transform  = shift;
+  my $methods_hierarchy = $self->hub->species_defs->ENSEMBL_ALIGNMENTS_HIERARCHY;
+
+  my $available_alignments = {};
+
+  foreach my $align_id (keys %$alignments) {
+    push @{$available_alignments->{$alignments->{$align_id}{'species_set_id'}}}, $alignments->{$align_id};
+  }
+
+  my $final_alignments = {};
+
+  my $ss_id_hash_flag = {};
+  foreach my $ss_id (keys %$available_alignments) {
+    for (my $i=0; $i<=$#$methods_hierarchy; $i++) {
+      my $method = $methods_hierarchy->[$i];
+      my $re = qr /$method/i;
+      foreach my $alignment (@{$available_alignments->{$ss_id}}) {
+        # If type found and if no previous alignments assigned then proceed
+        if ($alignment->{type} =~ $re && !$ss_id_hash_flag->{$ss_id}) {
+          $final_alignments->{$alignment->{'id'}} = $alignment;
+          $ss_id_hash_flag->{$ss_id} = 1;
+          last;
+        }
+
+        # Assign any alignment that does not match the conditions above.
+        if (!$ss_id_hash_flag->{$alignment->{'species_set_id'}} && $i == $#$methods_hierarchy) {
+          $final_alignments->{$alignment->{'id'}} = $alignment;
+          $ss_id_hash_flag->{$alignment->{'species_set_id'}} = 1;
+          last;
+        }
+      }
+    }
+  }
+  return $final_alignments || $alignments;
 }
 
 1;

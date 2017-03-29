@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -63,15 +63,20 @@ sub configure {
     STABLE_IDS          => undef,
   );
 
-  for my $species (keys %{$self->{'conf'}->{'_storage'}}, 'MULTI') {
+  for my $species (sort keys %{$self->{'conf'}->{'_storage'}}, 'MULTI') {
     (my $sp = $species) =~ s/_/ /g;
     $sp = 'ancestral_sequences' if $sp eq 'MULTI';
     
     next unless ref $self->{'conf'}->{'_storage'}{$species};
     
     Bio::EnsEMBL::Registry->add_alias($species, $sp);
+
+    if ($sp ne 'ancestral_sequences' && $self->{'conf'}->{'_storage'}{$species} && $self->{'conf'}->{'_storage'}{$species}{$species}) {
+      my $prod_name = $self->{'conf'}->{'_storage'}{$species}{$species}{'SPECIES_PRODUCTION_NAME'};
+      Bio::EnsEMBL::Registry->add_alias($species, $prod_name);
+    }
     
-    for my $type (keys %{$self->{'conf'}->{'_storage'}{$species}{'databases'}}){
+    for my $type (sort { $b =~ /CORE/ <=> $a =~ /CORE/ } keys %{$self->{'conf'}->{'_storage'}{$species}{'databases'}}){
       ## Grab the configuration information from the SpeciesDefs object
       my $TEMP = $self->{'conf'}->{'_storage'}{$species}{'databases'}{$type};
      
@@ -101,7 +106,7 @@ sub configure {
           ## Create a new "module" object. Stores info - but doesn't create connection yet
           $module->new(%arg, '-group' => $group) if ($self->dynamic_use($module) && $module->can('new'));
         }
-      } elsif ($type !~ /^DATABASE_(SESSION|ACCOUNTS)$/) {
+      } elsif ($type !~ /^DATABASE_(SESSION|ACCOUNTS)$/ && $type !~ /_MART_/) {
         warn "unknown database type $type\n";
       }
     }

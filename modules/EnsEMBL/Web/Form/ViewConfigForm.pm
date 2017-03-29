@@ -106,7 +106,15 @@ sub add_form_element {
     }
   }
 
-  $self->add_fieldset('Display options') unless $self->has_fieldset;
+  my $fieldset;
+  if ($element->{'fieldset'}) {
+    ($fieldset) = grep { my $legend = $_->get_legend; $legend && $legend->inner_HTML eq $element->{'fieldset'} } @{$self->fieldsets};
+    $self->add_fieldset($element->{'fieldset'}) unless $fieldset;
+    delete $element->{'fieldset'};
+  } else {
+    $self->add_fieldset('Display options') unless $self->has_fieldset;
+  }
+
   $self->add_element(%$element);
 
   if (!$view_config->get_label($element->{'name'})) {
@@ -128,6 +136,7 @@ sub build {
   $self->_build_imageconfig_form($image_config) if $image_config;
 
   $view_config->init_form($object);
+  $view_config->init_form_non_cacheable; # ViewConfig form level caching is not implemented yet, so calling both methods
 
   ## Add image width field to horizintal images
   if ($image_config && $image_config->orientation eq 'horizontal') {
@@ -167,6 +176,8 @@ sub _build_imageconfig_form {
   my $track_order;
 
   $self->{'json'}   = {};
+
+  $self->{favourite_tracks} = $image_config->_favourite_tracks;
 
   # Search results menu
   if ($image_config->has_extra_menu('search_results')) {
@@ -292,11 +303,13 @@ sub _build_imageconfig_menus {
 
   if ($menu_type eq 'matrix_subtrack') {
     my $display = $node->get('display');
+    if ($display ne 'off' && $display ne 'default'
 
-    if ($node->get_node($node->get_data('option_key')) &&
-      $node->get_node($node->get_data('option_key'))->get('display') eq 'on' &&                           # The cell option is turned on AND
-      $display ne 'off' &&                                                                                # The track is not turned off AND
-      !($display eq 'default' && $node->get_node($node->get_data('column_key'))->get('display') eq 'off') # The track renderer is not default while the column renderer is off
+#    if ($node->get_node($node->get_data('option_key')) &&
+#      $node->get_node($node->get_data('option_key'))->get('display') eq 'on' &&  # The cell option is turned on AND
+#      $display ne 'off' &&                                                       # The track is not turned off AND
+#      !($display eq 'default' && $node->get_node($node->get_data('column_key'))->get('display') eq 'off') 
+                                                # The track renderer is not default while the column renderer is off
     ) {
       $self->{'enabled_tracks'}{$menu_class}++;
       $self->{'enabled_tracks'}{$id} = 1;

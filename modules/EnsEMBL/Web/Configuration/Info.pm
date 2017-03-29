@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,9 +53,9 @@ sub populate_tree {
   my %error_messages = EnsEMBL::Web::Constants::ERROR_MESSAGES;
 
   ## Redirect strains to the strain page for the parent species as long as we're not on the parent species
-  if ($species_defs->STRAIN_COLLECTION && $species_defs->SPECIES_STRAIN !~ /reference/) {
+  if ($self->hub->action ne 'Strains' && $species_defs->STRAIN_COLLECTION && $species_defs->SPECIES_STRAIN !~ /reference/) {
     my $url = $self->hub->url({'species' => $species_defs->STRAIN_COLLECTION, 'action' => 'Strains'});
-    $self->page->ajax_redirect($url, 'page');
+    $self->hub->redirect($url);
   }
 
   my $index = $self->create_node('Index', '', [qw(homepage EnsEMBL::Web::Component::Info::HomePage)], {});
@@ -83,6 +83,22 @@ sub populate_tree {
     ));
   }
 
+  $self->create_node('GeneGallery', '',
+      [qw(gene_gallery EnsEMBL::Web::Component::Info::GeneGallery)],
+      { 'availability' => 1, 'template' => 'Legacy::Static' }
+  );
+  $self->create_node('VariationGallery', '',
+      [qw(var_gallery EnsEMBL::Web::Component::Info::VariationGallery)],
+      { 'availability' => 'database:variation', 'template' => 'Legacy::Static' }
+  );
+  $self->create_node('LocationGallery', '',
+      [qw(loc_gallery EnsEMBL::Web::Component::Info::LocationGallery)],
+      { 'availability' => 1, 'template' => 'Legacy::Static' }
+  );
+  $self->create_node('CheckGallery', '', [],
+      { command => 'EnsEMBL::Web::Command::Info::CheckGallery', no_menu_entry => 1 }
+  );
+
   $self->create_node('Expression', 'Gene Expression',
     [qw(
       rnaseq_table  EnsEMBL::Web::Component::Info::ExpressionTable
@@ -90,15 +106,6 @@ sub populate_tree {
     { 'availability' => 'database:rnaseq' }
   );
 
-  my $stats_menu = $self->create_submenu('Stats', 'Genome Statistics');
-  
-  $stats_menu->append_child($self->create_node('StatsTable', 'Assembly and Genebuild',
-    [qw(stats EnsEMBL::Web::Component::Info::SpeciesStats)]
-  ));
-  
-  $stats_menu->append_child($self->create_node('IPtop500', 'Top 500 InterPro hits',
-    [qw(ip500 EnsEMBL::Web::Component::Info::IPtop500)]
-  ));
   $self->create_node('WhatsNew', '',
     [qw(whatsnew EnsEMBL::Web::Component::Info::WhatsNew)]
   );

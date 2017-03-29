@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ sub _try_get_cache {
     cluck("get on closed cache");
   }
   return undef unless $self->{'open'};
-  return undef if $SiteDefs::ENSEMBL_BOOK_DISABLE;
+  return undef if $SiteDefs::ENSEMBL_PRECACHE_DISABLE;
   my $ver = $self->version($class);
   return undef if $ver < 1;
   my $out = $self->{'cache'}->get($class,$ver,{

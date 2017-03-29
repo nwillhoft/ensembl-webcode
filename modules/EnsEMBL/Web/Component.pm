@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,12 +28,9 @@ package EnsEMBL::Web::Component;
 
 use strict;
 
-use base qw(EnsEMBL::Web::Root Exporter);
+use base qw(EnsEMBL::Web::Root);
 
 use Digest::MD5 qw(md5_hex);
-
-our @EXPORT_OK = qw(cache cache_print);
-our @EXPORT    = @EXPORT_OK;
 
 use HTML::Entities  qw(encode_entities);
 use Text::Wrap      qw(wrap);
@@ -43,6 +40,7 @@ use EnsEMBL::Draw::DrawableContainer;
 use EnsEMBL::Draw::VDrawableContainer;
 
 use EnsEMBL::Web::Attributes;
+use EnsEMBL::Web::Utils::FormatText qw(helptip glossary_helptip get_glossary_entry);
 use EnsEMBL::Web::Document::Image::GD;
 use EnsEMBL::Web::Document::Table;
 use EnsEMBL::Web::Document::TwoCol;
@@ -73,21 +71,23 @@ sub new {
     html_format   => undef,
   };
   
+  bless $self, $class;
+
   if ($hub) {
     $self->{'viewconfig'}{$hub->type} = $hub->get_viewconfig({
       'component' => $id,
-      'type'      => $hub->type,
+      'type'      => $self->viewconfig_type || $hub->type,
       'cache'     => 1
     });
     $hub->set_cookie("toggle_$_", 'open') for grep $_, $hub->param('expand');
   }
-
-  bless $self, $class;
   
   $self->_init;
   
   return $self;
 }
+
+sub viewconfig_type { return undef; }
 
 sub buttons {
   ## Returns a list of hashrefs, each containing info about the component context buttons (keys: url, caption, class, modal, toggle, disabled, group, nav_image)
@@ -370,12 +370,6 @@ sub set_cache_key {
   return $key;
 }
 
-
-sub cache_print {
-  my ($cache, $string_ref) = @_;
-  $cache->print($$string_ref) if $string_ref;
-}
-
 sub html_encode {
   shift;
   return encode_entities(@_);
@@ -415,32 +409,21 @@ sub append_s_to_plural {
 }
 
 sub helptip {
-  ## Returns a dotted underlined element with given text and hover helptip
-  ## @param Display html
-  ## @param Tip html
   my ($self, $display_html, $tip_html) = @_;
-  return $tip_html ? sprintf('<span class="ht _ht"><span class="_ht_tip hidden">%s</span>%s</span>', encode_entities($tip_html), $display_html) : $display_html;
+  warn '### DEPRECATED - use EnsEMBL::Web::Utils::FormatText::helptip instead';
+  return &EnsEMBL::Web::Utils::FormatText::helptip($display_html, $tip_html);
 }
 
 sub glossary_helptip {
-  ## Creates a dotted underlined element that has a mouseover glossary helptip (helptip text fetched from glossary table of help db)
-  ## @param Display html
-  ## @param Entry to match the glossary key to fetch help tip html (if not provided, use the display html as glossary key)
   my ($self, $display_html, $entry) = @_;
-
-  $entry  ||= $display_html;
-  $entry    = $self->get_glossary_entry($entry);
-
-  return $self->helptip($display_html, $entry);
+  warn '### DEPRECATED - use EnsEMBL::Web::Utils::FormatText::helptip instead';
+  return &EnsEMBL::Web::Utils::FormatText::glossary_helptip($self->hub, $display_html, $entry);
 }
 
 sub get_glossary_entry {
-  ## Gets glossary value for a given entry
-  ## @param Entry key to lookup against the glossary
-  ## @return Glossary description (possibly HTML)
   my ($self, $entry) = @_;
-
-  return $self->hub->glossary_lookup->{$entry} // '';
+  warn '### DEPRECATED - use EnsEMBL::Web::Utils::FormatText::get_glossary_entry instead';
+  return &EnsEMBL::Web::Utils::FormatText::get_glossary_entry($self->hub, $entry);;
 }
 
 sub error_panel {
@@ -576,7 +559,7 @@ sub modal_form {
   $params->{'current'}  = $hub->action;
   $params->{'name'}     = $name;
   $params->{$_}         = $options->{$_} for qw(class method wizard label no_back_button no_button buttons_on_top buttons_align skip_validation enctype);
-  $params->{'enctype'}  = 'multipart/form-data' if !$self->renderer->{'_modal_dialog_'};
+  $params->{'enctype'}  = 'multipart/form-data' if !$self->renderer->{'_modal_dialog_'} && ($params->{'method'} || '') =~ /post/i;
 
   if ($options->{'wizard'}) {
     my $species = $hub->type eq 'UserData' ? $hub->data_species : $hub->species;

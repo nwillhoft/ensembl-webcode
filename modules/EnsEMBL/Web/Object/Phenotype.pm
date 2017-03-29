@@ -45,7 +45,13 @@ sub caption {
 
 sub long_caption {
   my $self = shift;
-  $self->has_features ? 'Locations of features associated with '.$self->get_phenotype_desc 
+  $self->has_features ? 'Loci associated with '.$self->get_phenotype_desc 
+                      : 'No loci associated with phenotype '.$self->get_phenotype_desc;
+}
+
+sub long_caption_2 {
+  my $self = shift;
+  $self->has_features ? 'Related conditions for '.$self->get_phenotype_desc
                       : 'No features associated with phenotype '.$self->get_phenotype_desc;
 }
 
@@ -58,11 +64,22 @@ sub has_features {
 
 sub get_phenotype_desc {
   my $self = shift;
-  return unless $self->hub->param('ph');
-  my $vardb   = $self->hub->database('variation');
-  my $pa      = $vardb->get_adaptor('Phenotype');
-  my $p       = $pa->fetch_by_dbID($self->hub->param('ph'));
-  return $p ? $p->description : undef;
+  my $hub  = $self->hub; 
+
+  if ($hub->param('ph')) {
+    my $vardb   = $self->hub->database('variation');
+    my $pa      = $vardb->get_adaptor('Phenotype');
+    my $p       = $pa->fetch_by_dbID($hub->param('ph'));
+    return $p ? $p->description : undef;
+  }
+  elsif ($hub->param('oa')) {
+    my $ontologyterm;
+    my $adaptor = $self->hub->get_adaptor('get_OntologyTermAdaptor', 'go');
+    my $ontology = $adaptor->fetch_by_accession($hub->param('oa'));
+    $ontologyterm = $ontology->name." (".$hub->param('oa').")" if ($ontology);
+    return $ontologyterm; 
+  }
+  return undef;
 };
 
 sub get_gene_display_label {
@@ -100,9 +117,6 @@ sub get_OntologyTerms{
 
   my @ot;
   foreach my $oa (@{$ontology_accessions}){
-
-    ## only these ontologies have links defined currently
-    next unless $oa =~ /^EFO|^Orphanet|^HP|^GO/;
  
     my $ontologyterm = $adaptor->fetch_by_accession($oa);
 
@@ -112,4 +126,5 @@ sub get_OntologyTerms{
   return (@ot ? \@ot : undef);
 
 }
+
 1;

@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ package EnsEMBL::Web::Memoize;
 use strict;
 use warnings;
 
-use SiteDefs;
 use JSON;
 use Digest::MD5 qw(md5_hex);
 use File::Path qw(make_path remove_tree);

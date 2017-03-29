@@ -223,7 +223,7 @@ sub _add_matrix {
       $node->set_data('menu', 'no');
       $node->set_data('caption', "$column - $_->{'row'}");
       $node->set_data('group', $_->{'group'}) if $_->{'group'};
-      $menu_data->{'matrix'}{'rows'}{$_->{'row'}} = { id => $_->{'row'}, group => $_->{'group'}, group_order => $_->{'group_order'}, column_order => $_->{'column_order'}, column => $column };
+      $menu_data->{'matrix'}{'rows'}{$_->{'row'}} = { id => $_->{'row'}, group => $_->{'group'}, group_order => $_->{'group_order'}, column_order => $_->{'column_order'}, row_order => $_->{'row_order'}, column => $column };
     }
   }
 
@@ -394,8 +394,35 @@ sub add_genes {
     }
   }
 
+  # Adding gencode basic track, this has been moved from each image config to this generic one
+  if (my $gencode_version = $self->species_defs->GENCODE_VERSION || "") {
+    $self->add_track('transcript', 'gencode', "Basic Gene Annotations from $gencode_version", '_gencode', {
+      labelcaption  => "Genes (Basic set from $gencode_version)",
+      display       => 'off',
+      description   => 'The GENCODE set is the gene set for human and mouse. <a href="/Help/Glossary?id=500" class="popup">GENCODE Basic</a> is a subset of representative transcripts (splice variants).',
+      sortable      => 1,
+      colours       => $self->species_defs->colour('gene'),
+      label_key     => '[biotype]',
+      logic_names   => ['proj_ensembl',  'proj_ncrna', 'proj_havana_ig_gene', 'havana_ig_gene', 'ensembl_havana_ig_gene', 'proj_ensembl_havana_lincrna', 'proj_havana', 'ensembl', 'mt_genbank_import', 'ensembl_havana_lincrna', 'proj_ensembl_havana_ig_gene', 'ncrna', 'assembly_patch_ensembl', 'ensembl_havana_gene', 'ensembl_lincrna', 'proj_ensembl_havana_gene', 'havana'],
+      renderers     =>  [
+        'off',                     'Off',
+        'gene_nolabel',            'No exon structure without labels',
+        'gene_label',              'No exon structure with labels',
+        'transcript_nolabel',      'Expanded without labels',
+        'transcript_label',        'Expanded with labels',
+        'collapsed_nolabel',       'Collapsed without labels',
+        'collapsed_label',         'Collapsed with labels',
+        'transcript_label_coding', 'Coding transcripts only (in coding genes)',
+      ],
+    });
+  }
+
+
   # Need to add the gene menu track here
   $self->add_track('information', 'gene_legend', 'Gene Legend', 'gene_legend', { strand => 'r' }) if $flag;
+
+  # overwriting Genes comprehensive track description to not be the big concatenation of many description (only gencode gene track)
+  $self->modify_configs(['transcript_core_ensembl'],{ description => 'The <a class="popup" href="/Help/Glossary?id=487">GENCODE Comprehensive</a> set is the gene set for human and mouse' }) if($self->species_defs->GENCODE_VERSION);
 }
 
 sub add_trans_associated {
@@ -786,7 +813,7 @@ sub add_synteny {
 sub add_alignments {
   my ($self, $key, $hashref, $species) = @_;
 
-  return unless grep $self->get_node($_), qw(multiple_align pairwise_tblat pairwise_blastz pairwise_other conservation);
+  return unless grep $self->get_node($_), qw(multiple_align pairwise_tblat pairwise_blastz pairwise_other conservation cactus_hal_pw);
 
   my $species_defs = $self->species_defs;
 
@@ -966,7 +993,10 @@ sub add_regulation_features {
 
   # Add other bigBed-based tracks
   my $methylation_menu  = $reg_regions->before($self->create_menu_node('functional_dna_methylation', 'DNA Methylation'));
-  my $db_tables         = $self->databases->{'DATABASE_FUNCGEN'}{'tables'};
+  my $db_tables         = {};
+  if ( $self->databases->{'DATABASE_FUNCGEN'} ) {
+    $db_tables          = $self->databases->{'DATABASE_FUNCGEN'}{'tables'};
+  }
   my %file_tracks = ( 'methylation' => {'menu'      => $methylation_menu,
                                         'renderers' => [ qw(off Off compact On) ],
                                         'default'   => 'compact',
@@ -1033,7 +1063,10 @@ sub add_regulation_builds {
     caption     => 'Regulatory Build',
   }));
 
-  my $db_tables     = $self->databases->{'DATABASE_FUNCGEN'}{'tables'};
+  my $db_tables     = {};
+  if ( defined $self->databases->{'DATABASE_FUNCGEN'} ) {
+    $db_tables      = $self->databases->{'DATABASE_FUNCGEN'}{'tables'};
+  }
   my $reg_feats     = $menu->append_child($self->create_menu_node('reg_features', 'Epigenomic activity'));
   my $reg_segs      = $menu->append_child($self->create_menu_node('seg_features', 'Segmentation features'));
   my $adaptor       = $db->get_FeatureTypeAdaptor;
@@ -1579,7 +1612,7 @@ sub add_phenotypes {
 sub add_structural_variations {
   my ($self, $key, $hashref) = @_;
   my $menu = $self->get_node('variation');
-  my @A = keys $hashref;
+  my @A = keys %$hashref;
 
   return unless $menu && scalar(keys(%{$hashref->{'structural_variation'}{'counts'}})) > 0;
   my $prefix_caption      = 'SV - ';
@@ -1777,7 +1810,7 @@ sub add_somatic_mutations {
 
 
   # Mixed source(s)
-  foreach my $key_1 (keys(%{$self->species_defs->databases->{'DATABASE_VARIATION'}{'SOMATIC_MUTATIONS'}})) {
+  foreach my $key_1 ( ($self->species_defs->databases->{'DATABASE_VARIATION'} && keys(%{$self->species_defs->databases->{'DATABASE_VARIATION'}{'SOMATIC_MUTATIONS'}})) || [] ) {
     if ($self->species_defs->databases->{'DATABASE_VARIATION'}{'SOMATIC_MUTATIONS'}{$key_1}{'none'}) {
       (my $k = $key_1) =~ s/\W/_/g;
       $somatic->append_child($self->create_track_node("somatic_mutation_$k", "$key_1 somatic variants", {
@@ -1803,9 +1836,9 @@ sub add_somatic_mutations {
     my $tissue_menu = $self->create_menu_node('somatic_mutation_by_tissue', 'Somatic variants by tissue');
 
     ## Add tracks for each tumour site
-    my %tumour_sites = %{$self->species_defs->databases->{'DATABASE_VARIATION'}{'SOMATIC_MUTATIONS'}{$key_2} || {}};
+    my %tumour_sites = ($self->species_defs->databases->{'DATABASE_VARIATION'} && %{$self->species_defs->databases->{'DATABASE_VARIATION'}{'SOMATIC_MUTATIONS'}{$key_2} || {}}) || ();
 
-    foreach my $description (sort  keys %tumour_sites) {
+    foreach my $description (sort keys %tumour_sites) {
       next if $description eq 'none';
 
       my $phenotype_id           = $tumour_sites{$description};

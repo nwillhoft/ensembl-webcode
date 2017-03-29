@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -60,7 +60,7 @@ sub new {
       while (my ($filter, $value) = each(%$filters)) {
         if ($filter eq 'cell_type') {
           my $cell_type_adaptor = $funcgen_db_adaptor->get_CellTypeAdaptor;
-          push @{$constraints->{'cell_types'}}, $_ for map $cell_type_adaptor->fetch_by_name($_) || (), @$value;
+          push @{$constraints->{'epigenomes'}}, $_ for map $cell_type_adaptor->fetch_by_name($_) || (), @$value;
         } elsif ($filter eq 'evidence_type') {
           $constraints->{'evidence_types'} = $value;
         } elsif ($filter eq 'project') {

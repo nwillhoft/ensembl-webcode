@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -84,7 +84,7 @@ sub content {
       $seq->name($slice->{'display_name'} || $slice->{'name'});
     }
 
-    $self->view->markup_new($sequence,$markup,$config);
+    $self->view->markup($sequence,$markup,$config);
 
     my $slice_name = $original_slice->name;
     
@@ -93,7 +93,7 @@ sub content {
 
     $self->view->output->template(qq(<p><b>$config->{'species'}</b>&nbsp;&gt;&nbsp;<a href="$url">$slice_name</a></p><pre>%s</pre>));
     
-    $html  = $self->build_sequence_new($sequence, $config);
+    $html  = $self->build_sequence($sequence, $config);
     $html .= $self->_hint(
       'strain_config', 
       ucfirst "$strain configuration",

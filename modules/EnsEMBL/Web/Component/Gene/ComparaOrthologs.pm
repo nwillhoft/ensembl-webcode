@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +23,8 @@ use strict;
 
 use HTML::Entities qw(encode_entities);
 
+use EnsEMBL::Web::Utils::FormatText qw(glossary_helptip get_glossary_entry);
+
 use base qw(EnsEMBL::Web::Component::Gene);
 
 sub _init {
@@ -37,8 +39,17 @@ sub _species_sets {}
 
 sub _get_all_analysed_species {
   my ($self, $cdb) = @_;
-  $self->{"_mlss_adaptor_$cdb"} ||= $self->hub->get_adaptor('get_MethodLinkSpeciesSetAdaptor', $cdb);
-  my $self->{'_all_analysed_species'} ||= {map {ucfirst($_->name) => 1} @{$self->{"_mlss_adaptor_$cdb"}->fetch_all_by_method_link_type('PROTEIN_TREES')->[0]->species_set->genome_dbs}};
+  if (!$self->{'_all_analysed_species'}) {
+    $self->{"_mlss_adaptor_$cdb"} ||= $self->hub->get_adaptor('get_MethodLinkSpeciesSetAdaptor', $cdb);
+    my $pt_mlsss = $self->{"_mlss_adaptor_$cdb"}->fetch_all_by_method_link_type('PROTEIN_TREES');
+    my $best_pt_mlss;
+    if (scalar(@$pt_mlsss) > 1) {
+      ($best_pt_mlss) = grep {$_->species_set->name eq 'collection-default'} @$pt_mlsss;
+    } else {
+      $best_pt_mlss = $pt_mlsss->[0];
+    }
+    $self->{'_all_analysed_species'} = {map {ucfirst($_->name) => 1} @{$best_pt_mlss->species_set->genome_dbs}};
+  }
   return %{$self->{'_all_analysed_species'}};
 }
 
@@ -67,8 +78,13 @@ sub content {
   
   delete $not_seen{ucfirst($species_defs->get_config($hub->species, 'SPECIES_PRODUCTION_NAME'))}; #deleting current species
   
-  #do not show non-strain species on strain view
-  if ($self->is_strain && !$species_defs->get_config($_, 'RELATED_TAXON')) { delete $not_seen{$_} for (keys %not_seen); }
+  for (keys %not_seen) {
+    #do not show non-strain species on strain view
+    if ($self->is_strain && !$species_defs->get_config($species_defs->production_name_mapping($_), 'RELATED_TAXON')) { delete $not_seen{$_}; }
+
+    #do not show strain species on main species view
+    if(!$self->is_strain && $species_defs->get_config($species_defs->production_name_mapping($_), 'IS_STRAIN_OF')) { delete $not_seen{$_}; }
+  }
   
   foreach my $homology_type (@orthologues) {
     foreach (keys %$homology_type) {
@@ -106,9 +122,9 @@ sub content {
     $columns = [
       { key => 'set',       title => 'Species set',    align => 'left',    width => '26%' },
       { key => 'show',      title => 'Show details',   align => 'center',  width => '10%' },
-      { key => '1:1',       title => 'With 1:1 orthologues',       align => 'center',  width => '16%', help => 'Number of species with 1:1 orthologues<em>'.$self->get_glossary_entry('1-to-1 orthologues').'</em>' },
-      { key => '1:many',    title => 'With 1:many orthologues',    align => 'center',  width => '16%', help => 'Number of species with 1:many orthologues<em>'.$self->get_glossary_entry('1-to-many orthologues').'</em>' },
-      { key => 'many:many', title => 'With many:many orthologues', align => 'center',  width => '16%', help => 'Number of species with many:many orthologues<em>'.$self->get_glossary_entry('Many-to-many orthologues').'</em>' },
+      { key => '1:1',       title => 'With 1:1 orthologues',       align => 'center',  width => '16%', help => 'Number of species with 1:1 orthologues<em>'.get_glossary_entry($hub, '1-to-1 orthologues').'</em>' },
+      { key => '1:many',    title => 'With 1:many orthologues',    align => 'center',  width => '16%', help => 'Number of species with 1:many orthologues<em>'.get_glossary_entry($hub, '1-to-many orthologues').'</em>' },
+      { key => 'many:many', title => 'With many:many orthologues', align => 'center',  width => '16%', help => 'Number of species with many:many orthologues<em>'.get_glossary_entry($hub, 'Many-to-many orthologues').'</em>' },
       { key => 'none',      title => 'Without orthologues',        align => 'center',  width => '16%', help => 'Number of species without orthologues' },
     ];
 
@@ -164,15 +180,16 @@ sub content {
       my $dnds_class  = ($orthologue_dnds_ratio ne "n/a" && $orthologue_dnds_ratio >= 1) ? "box-highlight" : "";
       
       # GOC Score, wgac and high confidence
-      my $goc_score  = $orthologue->{'goc_score'} && $orthologue->{'goc_score'} >= 0 ? $orthologue->{'goc_score'} : 'n/a';
-      my $wgac       = $orthologue->{'wgac'} && $orthologue->{'wgac'} >= 0 ? $orthologue->{'wgac'} : 'n/a';
-      my $confidence = $orthologue->{'highconfidence'} eq '1' ? 'Y' : $orthologue->{'highconfidence'} eq '0' ? 'N' : 'n/a';
+      my $goc_score  = (defined $orthologue->{'goc_score'} && $orthologue->{'goc_score'} >= 0) ? $orthologue->{'goc_score'} : 'n/a';
+      my $wgac       = (defined $orthologue->{'wgac'} && $orthologue->{'wgac'} >= 0) ? $orthologue->{'wgac'} : 'n/a';
+      my $confidence = $orthologue->{'highconfidence'} eq '1' ? 'Yes' : $orthologue->{'highconfidence'} eq '0' ? 'No' : 'n/a';
       my $goc_class  = ($goc_score ne "n/a" && $goc_score >= $orthologue->{goc_threshold}) ? "box-highlight" : "";
       my $wga_class  = ($wgac ne "n/a" && $wgac >= $orthologue->{wga_threshold}) ? "box-highlight" : "";
          
       (my $spp = $orthologue->{'spp'}) =~ tr/ /_/;
+      $spp = $species_defs->production_name_mapping($spp);
       my $link_url = $hub->url({
-        species => $species_defs->production_name_mapping($spp),
+        species => $spp,
         action  => 'Summary',
         g       => $stable_id,
         __clear => 1
@@ -182,6 +199,7 @@ sub content {
       my $region_link = ($link_url =~ /^\// 
         && $cdb eq 'compara'
         && $availability->{'has_pairwise_alignments'}
+        && !$self->is_strain
       ) ?
         sprintf('<a href="%s">Compare Regions</a>&nbsp;('.$orthologue->{'location'}.')',
         $hub->url({
@@ -247,7 +265,10 @@ sub content {
         } else {
           $id_info = qq{<p class="space-below">$orthologue->{'display_id'}&nbsp;&nbsp;<a href="$link_url">($stable_id)</a></p>};
         }
+      } else {
+ 	$id_info = qq{<p class="space-below"><a href="$link_url">$stable_id</a></p>};	
       }
+ 
       $id_info .= qq{<p class="space-below">$region_link</p><p class="space-below">$alignment_link</p>};
 
       ##Location - split into elements to reduce horizonal space
@@ -262,7 +283,7 @@ sub content {
  
       my $table_details = {
         'Species'    => join('<br />(', split /\s*\(/, $species_defs->species_label($species_defs->production_name_mapping($species))),
-        'Type'       => $self->html_format ? $self->glossary_helptip(ucfirst $orthologue_desc, ucfirst "$orthologue_desc orthologues").qq{<p class="top-margin"><a href="$tree_url">View Gene Tree</a></p>} : $self->glossary_helptip(ucfirst $orthologue_desc, ucfirst "$orthologue_desc orthologues") ,
+        'Type'       => $self->html_format ? glossary_helptip($hub, ucfirst $orthologue_desc, ucfirst "$orthologue_desc orthologues").qq{<p class="top-margin"><a href="$tree_url">View Gene Tree</a></p>} : glossary_helptip($hub, ucfirst $orthologue_desc, ucfirst "$orthologue_desc orthologues") ,
         'dN/dS'      => qq{<span class="$dnds_class">$orthologue_dnds_ratio</span>},
         'identifier' => $self->html_format ? $id_info : $stable_id,
         'Target %id' => qq{<span class="$target_class">}.sprintf('%.2f&nbsp;%%', $target).qq{</span>},

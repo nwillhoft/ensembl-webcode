@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,8 +53,8 @@ sub init_cacheable {
   my @bg_col = @{ $species_defs->TAXON_GENETREE_BGCOLOUR };
   my @fg_col = @{ $species_defs->TAXON_GENETREE_FGCOLOUR };
   foreach my $name ( @{ $species_defs->TAXON_ORDER } ) {
-    my $this_bg_col = shift @bg_col;
-    my $this_fg_col = shift @fg_col;
+    my $this_bg_col = shift @bg_col || 0;
+    my $this_fg_col = shift @fg_col || 0;
     $defaults->{"group_${name}_bgcolour"} = $this_bg_col if $this_bg_col ne '0';
     $defaults->{"group_${name}_fgcolour"} = $this_fg_col if $this_fg_col ne '0';
     $defaults->{"group_${name}_display"} = 'default';

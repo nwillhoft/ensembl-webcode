@@ -1,6 +1,6 @@
 /*
  * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
- * Copyright [2016] EMBL-European Bioinformatics Institute
+ * Copyright [2016-2017] EMBL-European Bioinformatics Institute
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,21 +20,23 @@
     function decorate_fn(column,extras,series) {
       var rseries = {};
       $.each(series,function(i,v) { rseries[v] = i; });
-      return function(html,row) {
-        var cols = (extras['*'].cols || []);
-        var extra = [];
-        var ok = true;
-        for(var i=0;i<cols.length;i++) {
-          var v = cols[i];
-          var val = row[rseries[v]];
-          if(val===null || val===undefined) {
-            ok = false;
-          } else {
-            extra.push('<small>('+row[rseries[v]]+')</small>');
+      return {
+        go: function(html,row) {
+          var cols = (extras['*'].cols || []);
+          var extra = [];
+          var ok = true;
+          for(var i=0;i<cols.length;i++) {
+            var v = cols[i];
+            var val = row[rseries[v]];
+            if(val===null || val===undefined) {
+              ok = false;
+            } else {
+              extra.push('<small>('+row[rseries[v]]+')</small>');
+            }
           }
+          if(!ok) { return html; }
+          return html + ' ' + extra.join(' ');
         }
-        if(!ok) { return html; }
-        return html + ' ' + extra.join(' ');
       };
     }
 

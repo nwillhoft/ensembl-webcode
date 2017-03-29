@@ -33,27 +33,28 @@ sub _init {
   $self->cacheable(0);
   $self->ajaxable(0);
   # these can be overridden in child
-  $self->{panel_type}     = 'TaxonSelector'; 
-  $self->{method}         = 'get'; # get|post
-  $self->{action}         = undef; # url to send data to
-  $self->{extra_params}   = {}; # additional params to send     
-  $self->{redirect}       = $hub->url({ function => undef }, 0, 1); # url to redirect to
-  # $self->{form_action}    = $self->{'url'} || $hub->url({ function => undef, align => $hub->param('align') }, 1);
-  $self->{form_action}    = $hub->referer->{uri};
-  $self->{link_text}      = 'Species selector';
-  $self->{finder_prompt}  = 'Start typing the name of a species...';
-  $self->{data_url}       = $hub->url('Json', {
+  $self->{panel_type}      = 'TaxonSelector'; 
+  $self->{method}          = 'get'; # get|post
+  $self->{extra_params}    = {}; # additional params to send     
+  $self->{redirect}        = $hub->url({ function => undef }, 0, 1); # url to redirect to
+  # $self->{form_action}   = $self->{'url'} || $hub->url({ function => undef, align => $hub->param('align') }, 1);
+  $self->{form_action}     = $hub->referer->{uri};
+  $self->{link_text}       = 'Species selector';
+  $self->{finder_prompt}   = 'Start typing the name of a species...';
+
+  $self->{action}          = $hub->referer->{ENSEMBL_ACTION};
+  $self->{view_config}      = $hub->referer->{ENSEMBL_FUNCTION} eq 'Image' ? 'Compara_AlignSliceBottom' : $hub->referer->{ENSEMBL_ACTION};
+  $self->{data_url}        = $hub->url('Json', {
                               type => $hub->type eq 'Tools' ? 'Tools' : 'SpeciesSelector',
                               function => 'fetch_species',
-                              action => $hub->referer->{'ENSEMBL_ACTION'},
+                              action => $self->{action} || '',
                               align => $hub->param('align') ? $hub->param('align') : ''
                             });
-  $self->{caller}          = $self->{hub_action} = $hub->referer->{'ENSEMBL_ACTION'};
+  $self->{caller}          = $self->{action};
+
   $self->{multiselect}     = $self->param('multiselect');
   $self->{selection_limit} = undef;
   $self->{is_blast}        = 0,
-  $self->{tip_text}        = 'Click the + and - icons to navigate the tree, click the checkboxes to select/deselect a species or collection.
-                              <br />Currently selected species are listed on the right.';
   $self->{entry_node}      = undef;
 }
 
@@ -85,6 +86,22 @@ sub content_ajax {
   my $shown = [ map { $urlParams->{$_} } grep m/^s(\d+)/, keys %$urlParams ]; # get species (and parameters) already shown on the page
   push @{$params{defaultKeys}}, @$shown if scalar @$shown;
 
+  
+  my $is_cmp = ($self->{caller} eq 'Compara_Alignments')? 1 : 0;
+  if ($is_cmp) {
+    my $alignment = $hub->species_defs->multi_hash->{'DATABASE_COMPARA'}{'ALIGNMENTS'}{$hub->param('align')};
+    $params{alignLabel} = $alignment->{name};
+    my $sp;
+    my $vc_key;
+    my $vc_val = 0;
+    $params{defaultKeys} = [];
+    foreach (keys %{$alignment->{species}}) {
+      $vc_key = join '_', ('species', $alignment->{id}, lc($_));
+      $vc_val = $hub->get_viewconfig($self->{view_config})->get($vc_key);
+      push @{$params{defaultKeys}}, $vc_key if $vc_val eq 'yes';
+    }
+  }
+
   return $self->jsonify({
     content   => $self->render_selector,
     panelType => $self->{panel_type},
@@ -96,7 +113,6 @@ sub content_ajax {
 sub render_selector {
   my $self         = shift;
   my $hub          = $self->hub;
-  # my $tip          = $self->render_tip;
   my $action       = $self->{action};
   my $method       = $self->{method};
   my $extra_params = $self->{extra_params} || {};
@@ -107,7 +123,7 @@ sub render_selector {
   #   $hidden_fields .= qq{<input type="hidden" name="$_" value="$extra_params->{$_}" />\n};
   # }
   
-  my $is_cmp = ($self->{hub_action} eq 'Compara_Alignments')? 1 : 0;
+  my $is_cmp = ($self->{caller} eq 'Compara_Alignments')? 1 : 0;
   if ($is_cmp) {
     foreach (keys %{$hub->referer->{params}}) {
       if ($_ ne 'align') {
@@ -116,12 +132,12 @@ sub render_selector {
     }    
     $action = $self->{form_action};
   }
-  if ($self->{hub_action} eq 'Multi') {
+  if ($self->{caller} eq 'Multi') {
     $action = $self->{form_action};
   }
 
   my $taxon_tree = sprintf qq {
-    <div class="taxon_selector_tree %s">
+    <div class="taxon_selector_tree">
       <div class="content">
         <h2> %s </h2>
         <div class="finder">
@@ -134,7 +150,6 @@ sub render_selector {
       </div>
     </div>
   }, 
-  ($is_cmp) ? 'full-width' : '',
   ($is_cmp) ? 'Alignment Selector' : 'Species Selector';
 
   my $taxon_list = qq {
@@ -165,27 +180,9 @@ sub render_selector {
       <div class="ss-msg"><span></span></div>
     </div>
   },
-  ($self->{hub_action} eq 'Compara_Alignments') ? $taxon_tree : $taxon_tree . $taxon_list,
-}
+  # ($self->{caller} eq 'Compara_Alignments') ? $taxon_tree : $taxon_tree . $taxon_list
+  $taxon_tree . $taxon_list
 
-sub render_tip {
-  my $self = shift;
-  
-  my $tip_text = $self->{tip_text};
-  if ($self->{selection_limit}) {
-    $tip_text .= " You can select up to $self->{selection_limit} species.";
-  }
-  
-  return qq{
-    <div class="info">
-      <h3>Tip</h3>
-      <div class="error-pad">
-        <p>
-          $tip_text
-        </p>
-      </div>
-    </div>
-  };
 }
 
 1;

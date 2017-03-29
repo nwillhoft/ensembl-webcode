@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -177,7 +177,7 @@ sub _count_alignments {
 
   my $c = { all => 0, pairwise => 0, multi => 0, patch => 0 };
   my %alignments = $self->sd_multi($args,'DATABASE_COMPARA','ALIGNMENTS');
-  my $species = $args->{'species'};
+  my $species = ucfirst($self->sd_config($args,"SPECIES_PRODUCTION_NAME"));
   foreach (grep $_->{'species'}{$species}, values %alignments) {
     $c->{'all'}++ ;
     $c->{'pairwise'}++ if $_->{'class'} =~ /pairwise_alignment/ && scalar keys %{$_->{'species'}} == 2;
@@ -233,7 +233,7 @@ sub get {
   my $out = $self->super_availability($args);
 
   my $member = $self->compara_member($args) if $out->{'database:compara'};
-  my $panmember = $self->pancompara_member($args) if $out->{'database:pancompara'};
+  my $panmember = $self->pancompara_member($args) if $out->{'database:compara_pan_ensembl'};
   my $counts = $self->_counts($args,$member,$panmember);
   my %clusters = $self->multiX('ONTOLOGIES');
 
@@ -287,7 +287,7 @@ sub get {
   if($self->variation_db_adaptor($args)) {
     $out->{'has_phenotypes'} = $self->_get_phenotype($args);
   }
-  if($out->{'database:pancompara'} && $self->pancompara_db_adaptor) {
+  if($out->{'database:compara_pan_ensembl'} && $self->pancompara_db_adaptor) {
     $out->{'family_pan_ensembl'} = !!$counts->{'families_pan'};
     $out->{'has_gene_tree_pan'} =
       $panmember ? $panmember->has_GeneTree : 0;

@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -52,7 +52,6 @@ sub psychic {
   my $sp_param      = $hub->param('species');
   my $species       = $sp_param || $hub->species;
      $species       = '' if $species eq 'Multi';
-  my $slice_adaptor = $hub->get_adaptor('get_SliceAdaptor');
   my ($url, $site);
 
   if ($species eq 'all' && $dest_site eq 'ensembl') {
@@ -142,6 +141,7 @@ sub psychic {
     ## match any of the following:
     if ($jump_query =~ /^\s*([-\.\w]+)[:]/i ) {
     #using core api to return location value (see perl documentation for core to see the available combination)
+      my $slice_adaptor = $hub->get_adaptor('get_SliceAdaptor');
       my ($seq_region_name, $start, $end, $strand) = $slice_adaptor->parse_location_to_values($jump_query);
 
       $seq_region_name =~ s/chr//;
@@ -219,7 +219,12 @@ sub psychic {
       # BLAST
       $url = $self->escaped_url('/Tools/Blast?query_sequence=%s', $1);
     } else {
+      my $coll = $species_defs->get_config($species,'STRAIN_COLLECTION');
+      $species_path = "/$coll" if $coll;
+
       $url = $self->escaped_url(($species eq 'ALL' || !$species ? '/Multi' : $species_path) . "/$script?species=%s;idx=%s;q=%s", $species || 'all', $index, $query);
+      my $common = $species_defs->get_config($species,'SPECIES_COMMON_NAME');
+      $url .= ";facet_strain=$common" if $coll and lc $coll ne lc $common;
     }
   }
 

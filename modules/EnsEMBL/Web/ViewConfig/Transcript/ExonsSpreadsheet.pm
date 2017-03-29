@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,7 +44,11 @@ sub init_cacheable {
 
 sub field_order {
   ## Abstract method implementation
-  return qw(flanking display_width sscon fullseq exons_only line_numbering), $_[0]->variation_fields, qw(consequence_filter);
+  my @out = (qw(flanking display_width sscon fullseq exons_only line_numbering), $_[0]->variation_fields);
+  unless(grep { $_ eq 'consequence_filter' } @out) {
+    push @out,'consequence_filter';
+  }
+  return @out;
 }
 
 sub form_fields {

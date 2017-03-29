@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -167,7 +167,16 @@ sub mlss_data {
 
 
     foreach my $mlss (@$mls_sets) {
-        my $ref_genome_db = $genome_adaptor->fetch_by_name_assembly( $mlss->get_value_for_tag('reference_species') );
+      ## Work out the name of the reference species using the MLSS title
+      my $short_ref_name;
+      if ($method =~ /LASTZ/) {
+        ($short_ref_name) = $mlss->name =~ /\(on (.+)\)/;
+      }
+      else {
+        $short_ref_name = substr($mlss->name, 0, 5);
+      }
+      if ($short_ref_name) {
+        my $ref_genome_db = $self->get_genome_db($genome_adaptor, $short_ref_name);
       
         ## Add to full list of species
         my $ref_name = $self->hub->species_defs->production_name_mapping($ref_genome_db->name);
@@ -180,12 +189,13 @@ sub mlss_data {
           foreach my $nonref_db (@non_ref_genome_dbs) {
             my $nonref_name = $self->hub->species_defs->production_name_mapping($nonref_db->name);
             $species->{$nonref_name}++;
-            $data->{$ref_name}{$nonref_name} = [$method, $mlss->dbID, $mlss->has_tag('ensembl_release')];
+            $data->{$ref_name}{$nonref_name} = [$method, $mlss->dbID];
           }
         } else {
             # Self-alignment. No need to increment $species->{$ref_name} as it has been done earlier
-            $data->{$ref_name}{$ref_name} = [$method, $mlss->dbID, $mlss->has_tag('ensembl_release')];
+            $data->{$ref_name}{$ref_name} = [$method, $mlss->dbID];
         }
+      }
     }
   }
   my @species_list = keys %$species;
@@ -291,17 +301,12 @@ sub draw_stepped_table {
       else {
         $cbg = $j % 2 ? 'bg3' : 'bg4';
       }
-      my ($method, $mlss_id, $with_extra_info) = @{$data->{$other_species}{$species}||[]};
+      my ($method, $mlss_id) = @{$data->{$other_species}{$species}||[]};
       my $content = '-';
 
       if ($mlss_id) {
-        if (not $with_extra_info) {
-          $content = '<b>YES</b>';
-        }
-        else {
           my $url = '/info/genome/compara/mlss.html?mlss='.$mlss_id;
           $content = sprintf('<a href="%s">YES</a>', $url);
-        }
       }
       $html .= sprintf '<td class="center %s" style="padding:2px;vertical-align:middle">%s</td>', $cbg, $content;
       $j++;

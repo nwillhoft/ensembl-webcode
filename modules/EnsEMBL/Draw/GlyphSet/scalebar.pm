@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -178,8 +178,8 @@ sub render {
       if ($register_line) {
         $end += 0.5 if $end == $start; # stop tags being a cross in small regions
         
-        $self->join_tag($t, "ruler_$start", 0, 0, $start            % $major_unit ? 'grey90' : 'grey80');
-        $self->join_tag($t, "ruler_$end",   1, 0, ($global_end + 1) % $major_unit ? 'grey90' : 'grey80') unless ($box_end + 1) % $minor_unit;
+        $self->join_tag($t, "ruler_$start", 0, 0, $start            % $major_unit ? 'grey90' : 'grey80', undef, -100);
+        $self->join_tag($t, "ruler_$end",   1, 0, ($global_end + 1) % $major_unit ? 'grey90' : 'grey80', undef, -100) unless ($box_end + 1) % $minor_unit;
       }
     }
     

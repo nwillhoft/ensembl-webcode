@@ -1,6 +1,6 @@
 #!/software/bin/perl
 # Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-# Copyright [2016] EMBL-European Bioinformatics Institute
+# Copyright [2016-2017] EMBL-European Bioinformatics Institute
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ use Digest::MD5;
 use FindBin qw($Bin);
 BEGIN{
   unshift @INC, "$Bin/../conf";
-  eval{ require SiteDefs };
+  eval{ require SiteDefs; SiteDefs->import; };
   if ($@){ die "Can't use SiteDefs.pm - $@\n"; }
   map{ unshift @INC, $_ } @SiteDefs::ENSEMBL_LIB_DIRS;
 }
@@ -48,7 +48,6 @@ die "Must supply cookie" unless $cookie;
 
 my @key = @ARGV[1..4];
 if(grep { not defined $_ } @key) {
-  require SiteDefs; # Only if key material not supplied
   $key[0] ||= $SiteDefs::ENSEMBL_ENCRYPT_0;
   $key[1] ||= $SiteDefs::ENSEMBL_ENCRYPT_1;
   $key[2] ||= $SiteDefs::ENSEMBL_ENCRYPT_2;

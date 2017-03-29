@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -95,13 +95,14 @@ sub new {
 
   my $cache = $config->{'image_config'}->hub->cache || new EnsEMBL::Draw::Utils::LocalCache;
 
-  my $colourmap = new EnsEMBL::Draw::Utils::ColourMap;
+  my $colourmap = new EnsEMBL::Draw::Utils::ColourMap($config->{'image_config'}->hub->species_defs);
 
   my $self = {
-              'data'    => $data,
-              'cache'   => $cache,
-              'colourmap' => $colourmap,
-              'glyphs'  => [],
+              'data'        => $data,
+              'cache'       => $cache,
+              'colourmap'   => $colourmap,
+              'glyphs'      => [],
+              'bridges'     => [],
               %$config
               };
 
@@ -123,6 +124,11 @@ sub new {
 sub colourmap {
   my $self = shift;
   return $self->{'colourmap'};
+}
+
+sub bridges {
+  my $self = shift;
+  return $self->{'bridges'};
 }
 
 sub create_glyphs {
@@ -269,15 +275,17 @@ sub draw_subtitle {
   my ($self, $metadata, $top) = @_;
   $metadata ||= {};
   ## Track name actually gets precedence, which is a bit illogical but whatever...
-  my $subtitle = $metadata->{'name'} || $metadata->{'subtitle'};
+  my $subtitle = $metadata->{'name'} || $metadata->{'subtitle'} 
+                  || $self->track_config->get('subtitle')
+                  || $self->track_config->get('caption');
   return unless $subtitle;
 
   my $subtitle_colour = $metadata->{'colour'} 
                           || $metadata->{'color'} 
                           || $self->track_config->get('colour') 
-                          || 'black';
+                          || 'slategray';
   my $subtitle_y      = defined($top) ? $top : $self->track_config->get('initial_offset') || 0;
-  $subtitle_y        += defined($self->track_config->get('subtitle_y')) ? $self->track_config->get('subtitle_y') : 8;
+  $subtitle_y        += $self->track_config->get('subtitle_y') if defined($self->track_config->get('subtitle_y'));
   my $height = 8;
 
   push @{$self->glyphs}, 
@@ -291,6 +299,7 @@ sub draw_subtitle {
                   y         => $subtitle_y,
                   halign    => 'left',
                   absolutex => 1,
+                  absolutey => 1,
                 });
   return $height;
 }
@@ -368,6 +377,11 @@ sub add_messages {
     });
     $y += $self->{'font_size'} + 2;
   }
+}
+
+sub add_bridge {
+  my ($self, $glyph, $tag, @params) = @_;
+  push @{$self->{'bridges'}}, {'glyph' => $glyph, 'tag' => $tag, 'params' => \@params};
 }
 
 #### TRIGONOMETRY FOR CIRCULAR GLYPHS

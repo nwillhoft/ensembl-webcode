@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ use EnsEMBL::Web::TextSequence::View::FlankingSequence;
 
 use base qw(EnsEMBL::Web::Component::TextSequence EnsEMBL::Web::Component::Variation);
 
-sub initialize {
+sub initialize_new {
   my $self              = shift;
   my $hub               = $self->hub;
   my $object            = $self->object || $hub->core_object('variation');
@@ -73,19 +73,19 @@ sub initialize {
     
     if ($_ eq 'var') {
       my $seq = [ map {{ letter => $_, class => 'var ' }} split '', $variation_string ];
-      $seq2 = $self->view->make_sequence(0);
+      $seq2 = $self->view->new_sequence('nowhere');
       $seq2->legacy($seq);
     } else {
       my $slice  = $slices{$_};
       my $markup = {};
       my $seq    = [ map {{ letter => $_ }} split '', $slice->seq ];
-      $seq2 = $self->view->make_sequence(0);
+      $seq2 = $self->view->new_sequence('nowhere');
       $seq2->legacy($seq);
  
       if ($config->{'snp_display'} eq 'on') {
         $self->set_variation_filter($config);
         $self->set_variations($config, { name => $config->{'species'}, slice => $slice }, $markup);
-        $self->view->markup_new([$seq2],[$markup],$config);
+        $self->view->markup([$seq2],[$markup],$config);
       }
     }
     
@@ -123,7 +123,7 @@ sub content {
     ", 'auto');
   }
   
-  $html .= $self->build_sequence_new($sequence, $config);
+  $html .= $self->build_sequence($sequence, $config);
 
   my $desc = '';
   $desc = $self->describe_filter($config) unless $self->param('follow');

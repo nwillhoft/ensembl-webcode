@@ -1,5 +1,5 @@
 # Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-# Copyright [2016] EMBL-European Bioinformatics Institute
+# Copyright [2016-2017] EMBL-European Bioinformatics Institute
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ my $edocs = $apis[0] eq 'edocs' || !scalar @apis;
 @apis = qw(core compara analysis funcgen pipeline variation production) unless scalar @apis; # core must always be first in order to generate links
 
 unshift @INC, "$root/ensembl-webcode/conf", $root;
-require SiteDefs;
+require SiteDefs; SiteDefs->import;
 
 if ($apis[0] ne 'edocs') {
   my %config_by_api = (

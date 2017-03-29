@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,8 +34,7 @@ sub content {
   die 'No tree for gene' unless $tree;
   my $node_id  = $hub->param('node')                   || die 'No node value in params';  
   my $node     = $tree->root->find_node_by_node_id($node_id) || die "No node_id $node_id in ProteinTree";
-  my $ta       = $c_db->get_NCBITaxonAdaptor();  
-  my $taxon    = $ta->fetch_node_by_taxon_id($node->{_taxon_id});
+  my $taxon    = $node->taxon;
   
   my $leaf_count      = scalar @{$node->get_all_leaves};
   my $is_leaf         = $node->is_leaf;
@@ -43,8 +42,8 @@ sub content {
   my $parent_distance = $node->distance_to_parent || 0;  
   my $taxon_id        = $node->taxon_id;     
   my $scientific_name = $taxon->scientific_name();
-  my $taxon_mya       = $taxon->get_tagvalue('ensembl timetree mya');
-  my $taxon_alias     = $taxon->ensembl_alias_name(); 
+  my $taxon_mya       = $node->get_divergence_time();
+  my $taxon_alias     = $node->get_common_name();
  
 
   my $caption   = "Taxon: ";

@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,12 +29,12 @@ sub new {
   my ($class, $page, $hub, $builder, $data) = @_;
   
   my $self = {
-    page    => $page,
-    hub     => $hub,
-    builder => $builder,
-    object  => $builder->object,
-    _data   => $data,
-    cl      => {}
+    page      => $page,
+    hub       => $hub,
+    builder   => $builder,
+    object    => $builder->object,
+    _data     => $data,
+    cl        => {}
   };
   
   bless $self, $class;
@@ -68,6 +68,7 @@ sub new_for_components {
   return $self->get_configurable_components(undef, $action, $function);
 }
 
+sub has_tabs          { return 0; } ## Does a page of this type normally have tabs?
 sub default_template {}
 
 sub init {
@@ -156,6 +157,8 @@ sub tree_cache_key {
 sub get_valid_action {
   my ($self, $action, $function,$assume_valid) = @_;
   
+  return $action if $action eq 'Wizard';
+  
   my $object   = $self->object;
   my $hub      = $self->hub;
   my $tree     = $self->tree;
@@ -238,8 +241,12 @@ sub get_configurable_components {
     my $module_name = $self->get_module_names('ViewConfig', $type, $component);
        @components  = ([ $component, $type ]) if $module_name;
   } else {
-    $node ||= $self->get_node($self->get_valid_action($action || $hub->action, $function || $hub->function));
-    
+    if (!$node) {
+      if (my $node_id = $self->get_valid_action($action || $hub->action, $function || $hub->function)) {
+        $node = $self->get_node($node_id);
+      }
+    }
+
     if ($node) {
       my @all_components = reverse @{$node->get_data('components')};
       

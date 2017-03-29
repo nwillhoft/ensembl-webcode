@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -316,11 +316,9 @@ sub hover_labels {
   my $html = '';
 
   foreach my $label (map values %{$_->{'hover_labels'} || {}}, @{$self->{'image_configs'}}) {
-
     my ($buttons, $contents) = $self->hover_label_tabs($label);
-
     $html .= sprintf(qq(
-      <div class="hover_label floating_popup %s">
+      <div class="hover_label floating_popup %s %s">
         <p class="header _hl_pin"><span class="hl-pin"></span><span class="_track_menu_header">%s</span><span class="_hl_extend hl-extend"></span></p>
         <div class="hl-buttons">%s</div>
         <div class="hl-content">%s</div>
@@ -328,6 +326,7 @@ sub hover_labels {
         <span class="close"></span>
       </div>),
       $label->{'class'},
+      $label->{track_highlight}[1] ? '_hl_on' : '',
       $label->{'header'},
       join('', @$buttons),
       join('', @$contents)
@@ -392,7 +391,7 @@ sub hover_label_tabs {
   }
 
   if ($highlight) {
-    push @buttons, qq(<div class="_hl_icon hl-icon"><a class="hl-icon-highlight" data-highlight-track="$label->{'highlight'}"></a></div>);
+    push @buttons, sprintf(qq(<div class="_hl_icon hl-icon"><a class="config hl-icon-highlight %s" href="$label->{'track_highlight'}[2]" rel="$label->{'component'}" data-highlight-track="$label->{'track_highlight'}[0]"></a></div>), $label->{'track_highlight'}[1] ? 'selected' : '');
     push @contents, qq(<div class="_hl_tab hl-tab"><p>Click to highlight/unhighlight this track</p></div>);
   }
 
@@ -414,6 +413,7 @@ sub track_boundaries {
     next unless scalar @{$glyphset->{'glyphs'}};
     my $height = $glyphset->height + $spacing;
     my $type   = $glyphset->type;
+    my $track_highlight = $config->is_track_highlighted($type);
     my $node;  
     my $collapse = 0;
       
@@ -430,13 +430,13 @@ sub track_boundaries {
     }
     
     if($node && $node->get('sortable') && !scalar keys %{$glyphset->{'tags'}}) {
-      push @boundaries, [ $top, $height, $type, $node->get('drawing_strand'), $node->get('order') ];
+      push @boundaries, [ $top, $height, $type, $node->get('drawing_strand'), $track_highlight, $node->get('order') ];
     }
     
     $top += $height;
   }
 
-  return [ sort { ($a->[4] || 0) <=> ($b->[4] || 0) } @boundaries ];
+  return [ sort { ($a->[5] || 0) <=> ($b->[5] || 0) } @boundaries ];
 }
 
 sub moveable_tracks {
@@ -451,29 +451,30 @@ sub moveable_tracks {
   
   # Get latest uploaded user data to add highlight class
   my $last_uploaded_user_data_code = {};
-  my $userdata_upload_codes = $self->hub->session->records({'type' => 'userdata_upload_code'});
+  my $userdata_session_records = $self->hub->session->records({'type' => 'userdata_upload_code'});
 
-  for (@{$userdata_upload_codes}) {
-    $last_uploaded_user_data_code->{$_->{'upload_code'}} = 1;
+  for (@{$userdata_session_records}) {
+    # Create a map of all upload_codes
+    $last_uploaded_user_data_code->{$_->data->{'upload_code'}} = 1;
   }
 
   # Purge this data so that it doesn't highlight second time.
-  $userdata_upload_codes->delete;
+  $self->hub->session->delete_records($userdata_session_records);
 
   foreach (@{$self->track_boundaries}) {
-    my ($t, $h, $type, $strand) = @$_;
-
+    my ($t, $h, $type, $strand, $track_hl) = @$_;
     # For highlight, upload_ and url_ prefixes are not there in the session data.
     # So split remove and then compare
     my ($record_type, $code) = split(/_/,$type, 2);
     my $highlight = $last_uploaded_user_data_code->{$code} || 0;
 
     $html .= sprintf(
-      '<li class="%s %s %s" style="height:%spx;background:url(%s) 0 %spx%s">
+      '<li class="%s %s %s %s" style="height:%spx;background:url(%s) 0 %spx%s">
         <div class="handle" style="height:%spx"%s><p></p></div>
       </li>',
       $type, $strand ? "$strand" : '',
       $highlight ? '_new_userdata usertrack_highlight' : '',
+      $track_hl ? 'track_highlight' : '',
       $h, $url, 3 - $t,
       $h == 0 ? ';display:none' : '',
       $h - 1,
@@ -621,6 +622,12 @@ sub render {
   $html .= $self->tailnote;
   
   if ($self->{'image_configs'}[0]) {
+    if (my $component = $self->component) {
+      if (my $view_config = $component->viewconfig) {
+        $html .= sprintf q(<input type="hidden" class="view_config" value="%s" />), $view_config->code;
+      }
+    }
+
     $html .= qq(<input type="hidden" class="image_config" value="$self->{'image_configs'}[0]{'type'}" />);
     $html .= '<span class="hidden drop_upload"></span>' if $self->{'image_configs'}[0]->get_node('user_data');
   }

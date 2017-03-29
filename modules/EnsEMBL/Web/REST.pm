@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -79,7 +79,7 @@ sub fetch {
   my $url   = sprintf('%s/%s', $self->server, $endpoint);
   my $delimiter = $args->{url_params}->{_delimiter} || ';';
   delete $args->{'url_params'}->{'_delimiter'};
-  if ($args->{'url_params'}) {
+  if (keys %{$args->{'url_params'}||{}}) {
     $url .= '?';
     while (my($k, $v) = each (%{$args->{'url_params'}||{}})) {
       $url .= sprintf('%s=%s%s', $k, $v, $delimiter);

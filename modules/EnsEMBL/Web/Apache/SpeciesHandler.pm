@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -61,7 +61,7 @@ sub get_redirect_uri {
   if (my $redirect = get_redirect($path_segments->[0])) {
     $redirect = join('?', join('/', '', $species, $redirect), $query || ());
 
-    warn "OLD LINK REDIRECT: $path_segments->[0] $redirect\n" if $SiteDefs::ENSEMBL_DEBUG_FLAGS && $SiteDefs::ENSEMBL_DEBUG_HANDLER_ERRORS;
+    warn "OLD LINK REDIRECT: $path_segments->[0] $redirect\n" if $SiteDefs::ENSEMBL_DEBUG_HANDLER_ERRORS;
 
     return $redirect;
   }

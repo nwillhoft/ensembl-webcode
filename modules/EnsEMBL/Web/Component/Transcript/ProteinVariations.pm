@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -101,7 +101,8 @@ sub content {
   ];
  
   # add SIFT for supported species
-  if ( $hub->species_defs->databases->{'DATABASE_VARIATION'}->{'SIFT'}){
+  if ( $hub->species_defs->databases->{'DATABASE_VARIATION'} &&
+       $hub->species_defs->databases->{'DATABASE_VARIATION'}->{'SIFT'}){
     push @$columns, ({ key => 'sift', title => 'SIFT', width => '8%', align => 'center', sort => 'position_html', help => $glossary->{'SIFT'} });
   }
   if ($hub->species =~ /homo_sapiens/i) {

@@ -11,7 +11,7 @@ BEGIN {
   $ENSEMBL_ROOT = dirname( $Bin );
   $ENSEMBL_ROOT =~ s/\/utils$//;
   unshift @INC, "$ENSEMBL_ROOT/conf";
-  eval{ require SiteDefs };
+  eval{ require SiteDefs; SiteDefs->import; };
   if ($@){ die "Can't use SiteDefs.pm - $@\n"; }
   map{ unshift @INC, $_ } @SiteDefs::ENSEMBL_LIB_DIRS;
 }
@@ -34,7 +34,7 @@ push @params,@ARGV;
 my $params = join(' ',@params);
   
 qx($Bin/precache.pl --mode=start $params);
-open(SPEC,'<',"$SiteDefs::ENSEMBL_BOOK_DIR/spec") or die;
+open(SPEC,'<',"$SiteDefs::ENSEMBL_PRECACHE_DIR/spec") or die;
 my $jobs;
 { local $/ = undef; $jobs = JSON->new->decode(<SPEC>); }
 close SPEC;
@@ -48,7 +48,7 @@ $SIG{CHLD} = sub { Parallel::Forker::sig_child($forker); };
 $SIG{TERM} = sub { $forker->kill_tree_all('TERM') if $forker && $forker->in_parent; die "Quitting...\n"; };
 
 my $ndone=0;
-foreach my $i (0..$#$jobs) {
+foreach my $i (reverse (0..$#$jobs)) {
   $forker->schedule(
     run_on_start => sub {
       qx($Bin/precache.pl --mode=index --index=$i);

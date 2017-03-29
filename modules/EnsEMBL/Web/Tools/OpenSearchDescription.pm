@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,9 +30,8 @@ use strict;
 sub create {
   ### Returns: none
   my $sd = shift;
-  my ($root) = grep -e $_, @{$sd->ENSEMBL_HTDOCS_DIRS||[]};
-  
-  return unless $root;
+  my $path = $sd->ENSEMBL_OPENSEARCH_PATH;
+  return unless $path;
 
   my $template = sprintf '<?xml version="1.0" encoding="UTF-8"?>
 <OpenSearchDescription
@@ -52,17 +51,17 @@ sub create {
   $sd->img_url,
   $sd->ENSEMBL_BASE_URL;
 
-  unless( -e "$root/opensearch" ) {
-    mkdir "$root/opensearch";
+  unless( -e $path ) {
+    mkdir $path;
   }
-  open O,">$root/opensearch/all.xml";
+  open O,">$path/all.xml";
   printf O $template, 'All', 'All species', 'All species', $sd->ENSEMBL_STYLE->{'SITE_ICON'}, 'common', 'ensembl_all';
   close O;
   foreach( $sd->valid_species ) {
     my $sn = substr( $sd->get_config($_,'SPECIES_BIO_SHORT'),0,5);
     my $cn = $sd->get_config($_,'SPECIES_COMMON_NAME');
     my $bn = $sd->get_config($_,'SPECIES_BIO_NAME');
-    open O,">$root/opensearch/$_.xml";
+    open O,">$path/$_.xml";
     printf O $template, $sn, "$cn - $bn", "$cn $bn", $sd->ENSEMBL_STYLE->{'SITE_ICON'}, $_, 'ensembl';
     close O;
   }

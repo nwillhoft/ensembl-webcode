@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,9 +33,10 @@ sub new {
 
   $self->{'species_defs'} ||= EnsEMBL::Web::SpeciesDefs->new;
   $self->{'title'}        ||= $self->{'heading'};
-  $self->{'css'}            = [ grep $_->{'group_name'} eq 'components', @{$self->{'species_defs'}->ENSEMBL_JSCSS_FILES->{'css'}} ]->[0]->minified_url_path;
-  $self->{'static_server'}  = $self->{'species_defs'}->ENSEMBL_STATIC_SERVER || '/';
-  $self->{'message'}        = encode_entities($self->{'message'}) if $self->content_type =~ /html/i;
+  $self->{'css'}            = ([ grep $_->{'group_name'} eq 'components', @{$self->{'species_defs'}->ENSEMBL_JSCSS_FILES->{'css'}} ]->[0]->minified_url_path) =~ s/^\///r;
+  $self->{'js'}             = ([ grep $_->{'group_name'} eq 'components', @{$self->{'species_defs'}->ENSEMBL_JSCSS_FILES->{'js'}} ]->[0]->minified_url_path) =~ s/^\///r;
+  $self->{'static_server'}  = ($self->{'species_defs'}->ENSEMBL_STATIC_SERVER || '') =~ s/\/$//r;
+  $self->{'message'}        = encode_entities($self->{'message'}) if $self->content_type =~ /html/i && !$self->{'message_is_html'};
 
   return $self;
 }
@@ -43,7 +44,7 @@ sub new {
 sub render {
   ## @override
   my $self = shift;
-  return $self->_template =~ s/\[\[([^\]]+)\]\]/my $replacement = $self->{$1};/ger;
+  return $self->_template =~ s/\[\[([^\]]+)\]\]/my $replacement = $self->{$1} || '';/ger;
 }
 
 sub _template {
@@ -51,8 +52,9 @@ sub _template {
 <html lang="en-gb">
 <head>
   <title>[[title]]</title>
-  <link rel="stylesheet" type="text/css" media="all" href="[[static_server]][[css]]"/>
-  <link rel="icon" href="[[static_server]]i/ensembl-favicon.png" type="image/png" />
+  <link rel="stylesheet" type="text/css" media="all" href="[[static_server]]/[[css]]"/>
+  <link rel="icon" href="[[static_server]]/i/ensembl-favicon.png" type="image/png" />
+  <script type="text/javascript" src="[[static_server]]/[[js]]"></script>
 </head>
 <body>
   <div id="min_width_container">

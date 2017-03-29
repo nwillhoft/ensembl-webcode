@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -57,11 +57,13 @@ sub content {
       { marker_id => $marker_id }
     );
   }
-  
+
   # Add multicell configuration
-  $image_config->{'data_by_cell_line'} = $self->new_object('Slice', $slice, $object->__data)->get_cell_line_data_closure($image_config) if keys %{$hub->species_defs->databases->{'DATABASE_FUNCGEN'}{'tables'}{'cell_type'}{'ids'}};
+  if ( $hub->species_defs->databases->{'DATABASE_FUNCGEN'} ) {
+    $image_config->{'data_by_cell_line'} = $self->new_object('Slice', $slice, $object->__data)->get_cell_line_data_closure($image_config) if keys %{$hub->species_defs->databases->{'DATABASE_FUNCGEN'}{'tables'}{'cell_type'}{'ids'}};
+  }
   $image_config->_update_missing($object);
-  
+
   my $info  = $self->_add_object_track($image_config);
   my $image = $self->new_image($slice, $image_config, $object->highlights);
   
@@ -90,13 +92,12 @@ sub _add_object_track {
       my $default = $node->data->{'display'};
       
       if ($current eq 'off' && $default eq 'off') {
-        my $flag = $session->get_data(type => 'auto_add', code => lc $key);
+        my $flag = $session->get_record_data({type => 'auto_add', code => lc $key})->{'flag'};
         
-        if (!$flag->{'data'}) { # haven't done this before
+        if (!$flag) { # haven't done this before
           $image_config->update_track_renderer(lc $key, 'transcript_label');
-          $session->set_data(type => 'auto_add' , code => lc $key, data => 1); 
-          $session->store;
-          
+          $session->set_record_data({type => 'auto_add' , code => lc $key, flag => 1});
+
           $extra = $self->_info('Information', '<p>The track containing the highlighted gene has been added to your display.</p>');
         }
       }

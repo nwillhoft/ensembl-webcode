@@ -1,7 +1,7 @@
 #! /usr/bin/env perl
 
 # Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-# Copyright [2016] EMBL-European Bioinformatics Institute
+# Copyright [2016-2017] EMBL-European Bioinformatics Institute
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ BEGIN {
   $ENSEMBL_ROOT = dirname( $Bin );
   $ENSEMBL_ROOT =~ s/\/utils$//;
   unshift @INC, "$ENSEMBL_ROOT/conf";
-  eval{ require SiteDefs };
+  eval{ require SiteDefs; SiteDefs->import; };
   if ($@){ die "Can't use SiteDefs.pm - $@\n"; }
   map{ unshift @INC, $_ } @SiteDefs::ENSEMBL_LIB_DIRS;
 }
@@ -42,6 +42,7 @@ use Digest::MD5 qw(md5_hex);
 use Fcntl;
 use DB_File;
 use SDBM_File;
+use Encode qw(decode encode);
 
 $| = 1;
 
@@ -231,6 +232,7 @@ foreach my $index (@indexes) {
     $conf->{'dbs'}                     = { map { ($_,$dbs{$_}{NAME}) } keys %dbs };
     $conf->{'dbs'}{'DATABASE_COMPARA'} = 'ensembl_compara_'.$SD->ENSEMBL_VERSION;
     $conf->{'dbs'}{'DATABASE_GO'}      = 'ensembl_ontology_'.$SD->ENSEMBL_VERSION;
+
     my $core = $dbs{'DATABASE_CORE'};
     $conf->{'core_details'}            = $core;
 
@@ -1021,16 +1023,25 @@ sub dumpPhenotype {
       GROUP BY p.phenotype_id),'description');
   foreach my $phen (keys %$phenotype_info) {
     my $syns = $synonyms{$phenotype_info->{$phen}{'phenotype_id'}} || [];
-    &p( PhenLine( $dbspecies, $phen, $phenotype_info->{$phen}{'phenotype_id'}, $syns, $counter ), $fh);
+    &p( PhenLine( $dbspecies, $phen, $phenotype_info->{$phen}{'phenotype_id'}, $syns, '', $counter ), $fh);
   }
 
+  my $ont_db  = $conf->{'dbs'}{'DATABASE_GO'};
+  my $phenotype_ont_info = $conf->{'variation_dbh'}->selectall_hashref(qq(
+     SELECT distinct t.accession, t.name
+       FROM $ont_db.term t, phenotype_ontology_accession poa
+      WHERE t.accession = poa.accession),'accession');
+  foreach my $phenotype_ont (keys %$phenotype_ont_info) {
+    &p( PhenLine( $dbspecies, $phenotype_ont_info->{$phenotype_ont}{'name'}, $phenotype_ont, [], 1, $counter ), $fh);
+  }
   return footer( $counter->(), $fh);
 }
 
 sub PhenLine {
-  my ($species, $name, $id, $synonyms, $counter ) = @_;
-  my $url = sprintf(qq(%s/Phenotype/Locations?ph=%s),
+  my ($species, $name, $id, $synonyms, $is_ont, $counter ) = @_;
+  my $url = sprintf(qq(%s/Phenotype/Locations?%s=%s),
                     $species,
+                    $is_ont ? 'oa' : 'ph',
                     $id);
   $species =~ s/_/ /;
   $name = &clean($name,'name');
@@ -1139,7 +1150,7 @@ sub StrucVarLine {
   my ($species, $id, $evidence, $study, $location, $quick_links, $desc, $action, $params, $counter ) = @_;
 # $location, $action and $params contain info for location view, no point in adding it until we can pass this info from StructuralVariation/Summary
 
-  my $url = sprintf(qq(%s/StructuralVariation/Summary?sv=%s),
+  my $url = sprintf(qq(%s/StructuralVariation/Explore?sv=%s),
                     $species,
                     $id);
   if ($do_private) {
@@ -1346,16 +1357,13 @@ sub dumpOligoProbe {
 
   $sth    = $conf->{'dbh'}->prepare(
     "select ps.name, ps.probe_set_id, count(distinct pf.probe_feature_id) as hits, a.vendor
-        from $FUNCDB.probe_set ps, $FUNCDB.probe p, $FUNCDB.probe_feature pf, $FUNCDB.array_chip ac, $FUNCDB.array a, $FUNCDB.status s, $FUNCDB.status_name sn
-      where sn.name='MART_DISPLAYABLE'
-        and sn.status_name_id=s.status_name_id
-        and s.table_name='array'
-        and s.table_id=a.array_id
-        and ps.probe_set_id = p.probe_set_id
-        and p.probe_id = pf.probe_id
-        and p.array_chip_id = ac.array_chip_id
-        and ac.array_id = a.array_id
-      group by ps.name, a.vendor"
+         from $FUNCDB.probe_set ps, $FUNCDB.probe p, $FUNCDB.probe_feature pf, $FUNCDB.array_chip ac, $FUNCDB.array a
+       where
+         ps.probe_set_id = p.probe_set_id
+         and p.probe_id = pf.probe_id
+         and p.array_chip_id = ac.array_chip_id
+         and ac.array_id = a.array_id
+       group by ps.name, a.vendor" 
   );
   $sth->execute();
   print LOG "    Retrieved probe_set features; dumping to xml...".&date_and_mem()."\n";
@@ -1400,16 +1408,13 @@ sub dumpOligoProbe {
 
   $sth    = $conf->{'dbh'}->prepare(
     "select p.probe_id, p.name, a.vendor, a.name, count(distinct pf.probe_feature_id) as hits
-        from $FUNCDB.probe p, $FUNCDB.probe_feature pf, $FUNCDB.array_chip ac, $FUNCDB.array a, $FUNCDB.status s, $FUNCDB.status_name sn
-      where sn.name='MART_DISPLAYABLE'
-        and sn.status_name_id=s.status_name_id
-        and s.table_name='array'
-        and s.table_id=a.array_id
-        and p.probe_set_id is NULL
-        and p.probe_id = pf.probe_id
-        and p.array_chip_id = ac.array_chip_id
-        and ac.array_id = a.array_id
-      group by p.name"
+       from $FUNCDB.probe p, $FUNCDB.probe_feature pf, $FUNCDB.array_chip ac, $FUNCDB.array a
+      where
+       p.probe_set_id is NULL
+       and p.probe_id = pf.probe_id
+       and p.array_chip_id = ac.array_chip_id
+       and ac.array_id = a.array_id
+     group by p.name"
   );
   $sth->execute();
   print LOG "    Retrieved probe features; dumping to xml...".&date_and_mem()."\n";
@@ -2955,8 +2960,9 @@ sub GeneTransLine {
     my $desc        = $xref->{'desc'};
 
     if ($xref->{'external_syns'}) {
-      foreach (keys %{$xref->{'external_syns'}}){
-        $ext_syns->{$_}++;
+      foreach my $syn (keys %{$xref->{'external_syns'}}){
+        $syn = &clean($syn);
+        $ext_syns->{$syn}++;
       }
     }
 
@@ -3415,12 +3421,21 @@ sub clean {
   $text =~ s/ & / &amp; /g;
   $text =~ s/</&lt;/g;
   $text =~ s/>/&gt;/g;
+  $text = &latin_to_utf($text);
 
   if ($text =~ /[<>]/) {
     print LOG "WARNING: Unsupported character $text in field $field\n";
   }
   return $text;
 }
+
+sub latin_to_utf {
+  my ($text) = @_;
+  $text = decode( 'iso-8859-1', $text );
+  $text = encode( 'utf-8', $text );
+  return $text; 
+}
+
 
 sub make_counter {
   my $start = shift;

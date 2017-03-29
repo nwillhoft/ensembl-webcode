@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,8 +25,10 @@ use parent qw(EnsEMBL::Web::Template::Legacy);
 
 sub init {
   my $self = shift;
-  $self->{'main_class'}     = 'main';
-  $self->{'lefthand_menu'}  = 0;
+  $self->{'main_class'}       = 'main';
+  $self->{'lefthand_menu'}    = 0;
+  $self->{'has_species_bar'}  = 0;
+  $self->{'has_tabs'}         = $self->hub->controller->configuration->has_tabs;
   $self->add_head;
   $self->add_body;
 }

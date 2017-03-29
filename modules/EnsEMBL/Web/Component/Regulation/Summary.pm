@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -72,7 +72,10 @@ sub content {
   my $show        = $self->hub->get_cookie_value('toggle_epigenomes_list') eq 'open';
   my @class = ($object->feature_type->name);
 
-  my $epigenome_count = grep { $_ > 0 } values %{$self->hub->species_defs->databases->{'DATABASE_FUNCGEN'}->{'tables'}{'cell_type'}{'ids'}}; 
+  my $epigenome_count = 0;
+  if ( $self->hub->species_defs->databases->{'DATABASE_FUNCGEN'} ) {
+    $epigenome_count = grep { $_ > 0 } values %{$self->hub->species_defs->databases->{'DATABASE_FUNCGEN'}->{'tables'}{'cell_type'}{'ids'}};
+  }
 
   $summary->add_row('Classification',join(', ',@class));
   $summary->add_row('Location', $location_html);

@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ sub content {
   my $species_defs = $hub->species_defs;
   
   # check we have a location and LD populations are defined
-  return unless $self->builder->object('Location') && $species_defs->databases->{'DATABASE_VARIATION'}{'DEFAULT_LD_POP'};
+  return unless $self->builder->object('Location') && $species_defs->databases->{'DATABASE_VARIATION'} && $species_defs->databases->{'DATABASE_VARIATION'}{'DEFAULT_LD_POP'};
   
   my $selected_pop = $hub->param('pop_id');
   
@@ -193,7 +193,7 @@ sub summary_table {
       
       $row->{'plot'} = qq{<a class="ld_plot_link space-right" href="$url">View plot</a>};
       
-      $row->{'table'} = $self->ajax_add($self->ajax_url(undef, { pop_id => $id, update_panel => 1 }).' table', $id);
+      $row->{'table'} = $self->ajax_add($self->ajax_url(undef, { pop_id => $id, update_panel => 1 }), $id);
       
       # export table
       $url = $hub->url({
@@ -268,7 +268,7 @@ sub linked_var_table {
   my @colour_scale    = $hub->colourmap->build_linear_gradient(40, '#0000FF', '#770088', '#BB0044', 'red'); # define a colour scale for p-values
   my %mappings        = %{$object->variation_feature_mapping};  # first determine correct SNP location 
   my ($vf, $loc);
-  
+
   if (keys %mappings == 1) {
     ($loc) = values %mappings;
   } else { 
@@ -298,6 +298,7 @@ sub linked_var_table {
     { key => 'r2',        title => 'r<sup>2</sup>',           align => 'left',  sort => 'numeric', help => $glossary->{'r2'} },
     { key => 'd_prime',   title => q{D'},                     align => 'left',  sort => 'numeric', help => $glossary->{"D'"} },
     { key => 'pfs',       title => 'Associated phenotype(s)', align => 'left',  sort => 'html'                               },
+    { key => 'ctype',     title => 'Consequence Type',        align => 'left',  sort => 'html'                               },
     { key => 'genes',     title => 'Located in gene(s)',      align => 'left',  sort => 'html'                               },
     { key => 'pgene',     title => 'Gene phenotype(s)',       align => 'left',  sort => 'html'                               },
   ], [], { data_table => 1 });
@@ -441,6 +442,7 @@ sub linked_var_table {
         distance    => abs($start - ($vf_start > $vf_end ? $vf_end : $vf_start)),
         r2          => sprintf("%.3f", $ld->{'r2'}),
         d_prime     => sprintf("%.3f", $ld->{'d_prime'}),
+        ctype       => $self->render_consequence_type($ld_vf,1),
         genes       => $genes     || '-',
         pfs         => $pf_string || '-',
         pgene       => $pgene     || '-',

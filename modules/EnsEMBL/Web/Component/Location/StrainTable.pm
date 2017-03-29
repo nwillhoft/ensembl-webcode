@@ -201,23 +201,20 @@ sub make_table {
       helptip => 'Variant Reference/Alternative nucleotides',
       toggle_separator => '/',
       toggle_maxlen => 20,
-      toggle_highlight_column => 'vf_allele',
-      toggle_highlight_over => 2
+      toggle_highlight_column => 'ref_al',
     },{
       _key => 'ref_al', _type => 'string no_filter no_sort',
       label => "Ref.",
       helptip => 'Reference nucleotide(s)',
       toggle_separator => '/',
       toggle_maxlen => 20,
-      toggle_highlight_column => 'vf_allele',
-      toggle_highlight_over => 2
+      toggle_highlight_column => 'ref_al',
     });
 
   my @sample_cols;
   foreach my $sample (@$samples) {
     my $sample_label = $sample->name;
        $sample_label =~ s/^MGP://;
-       $sample_label =~ s!/!!g;
     push (@sample_cols,
     {
       _key    => lc($sample->name).'_strain'  , _type => 'string no_filter no_sort',
@@ -292,7 +289,7 @@ sub variation_table {
               class    => $vf->var_class,
               snptype  => $type,
               Alleles  => $vf->allele_string,
-              ref_al   => qq{<b>$ref_allele</b>},
+              ref_al   => $ref_allele,
               chr      => "$chr:" . ($start > $end ? " between $end & $start" : "$start".($start == $end ? '' : "-$end")),
               location => "$chr:".($start>$end?$end:$start),
             };

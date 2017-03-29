@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -45,40 +45,21 @@ sub content {
   my $self         = shift;
   my $hub          = $self->hub;
   my $species_defs = $hub->species_defs;
-  my $img_url      = $self->img_url;
   my $common_name  = $species_defs->SPECIES_COMMON_NAME;
-  my $display_name = $species_defs->SPECIES_SCIENTIFIC_NAME;
-  
-  $self->{'icon'}     = qq(<img src="${img_url}24/%s.png" alt="" class="homepage-link" />);
+  my $img_url      = $self->img_url;
+  $self->{'icon'}  = qq(<img src="${img_url}24/%s.png" alt="" class="homepage-link" />);
+
   $self->{'img_link'} = qq(<a class="nodeco _ht _ht_track" href="%s" title="%s"><img src="${img_url}96/%s.png" alt="" class="bordered" />%s</a>);
- 
-  my $icon_name;
-  my $strain_of = $species_defs->IS_STRAIN_OF; 
-  if ($species_defs->IS_STRAIN_OF) {
-    $icon_name = $strain_of.'_strain';
-  }
-  else {
-    $icon_name = $hub->species;
-  }
- 
+  
   return sprintf('
-    <div class="column-wrapper">  
-      <div class="box-left">
-        <div class="species-badge">
-          <img src="%sspecies/64/%s.png" alt="" title="%s" />
-          %s
-        </div>
-        %s
-      </div>
-      %s
-    </div>
+    <div class="box-left"><div class="round-box tinted-box unbordered"><h2>Search %s</h2>%s</div></div>
+    %s
     <div class="box-left"><div class="round-box tinted-box unbordered">%s</div></div>
     <div class="box-right"><div class="round-box tinted-box unbordered">%s</div></div>
     <div class="box-left"><div class="round-box tinted-box unbordered">%s</div></div>
     <div class="box-right"><div class="round-box tinted-box unbordered">%s</div></div>
     %s',
-    $img_url, $icon_name, $species_defs->SAMPLE_DATA->{'ENSEMBL_SOUND'},
-    $common_name =~ /\./ ? "<h1>$display_name</h1>" : "<h1>$common_name</h1><p>$display_name</p>",
+    $common_name,
     EnsEMBL::Web::Document::HTML::HomeSearch->new($hub)->render,
     $species_defs->multidb->{'DATABASE_PRODUCTION'}{'NAME'} ? '<div class="box-right"><div class="round-box info-box unbordered">' . $self->whats_new_text . '</div></div>' : '',
     $self->assembly_text,
@@ -240,7 +221,7 @@ sub genebuild_text {
     </div>
     <h2>Gene annotation</h2>
     <p><strong>What can I find?</strong> Protein-coding and non-coding genes, splice variants, cDNA and protein sequences, non-coding RNAs.</p>
-    <p><a href="%s" class="nodeco">%sMore about this genebuild</a>%s</p>
+    <p><a href="%s" class="nodeco">%sMore about this genebuild</a></p>
     %s
     %s
     %s
@@ -260,8 +241,6 @@ sub genebuild_text {
     
     $hub->url({ action => 'Annotation', __clear => 1 }), sprintf($self->{'icon'}, 'info'),
     
-    $hub->database('rnaseq') ? sprintf(', including <a href="%s" class="nodeco">RNASeq gene expression models</a>', $hub->url({'action' => 'Expression'})) : '',
-
     $ftp ? sprintf(
       '<p><a href="%s/fasta/%s/" class="nodeco">%sDownload genes, cDNAs, ncRNA, proteins</a> (FASTA)</p>', ## Link to FTP site
       $ftp, lc $species, sprintf($self->{'icon'}, 'download')

@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,8 +25,10 @@ use parent qw(EnsEMBL::Web::Template);
 
 sub init {
   my $self = shift;
-  $self->{'main_class'}     = 'main';
-  $self->{'lefthand_menu'}  = 1;
+  $self->{'main_class'}       = 'main';
+  $self->{'lefthand_menu'}    = 1;
+  $self->{'has_species_bar'}  = $self->hub->species && $self->hub->species !~ /multi|common/i ? 1 : 0;
+  $self->{'has_tabs'}         = $self->hub->controller->configuration->has_tabs;
   $self->add_head;
   $self->add_body;
 }
@@ -54,7 +56,21 @@ sub add_body {
     account          EnsEMBL::Web::Document::Element::AccountLinks
     search_box       EnsEMBL::Web::Document::Element::SearchBox
     tools            EnsEMBL::Web::Document::Element::ToolLinks
-    tabs             EnsEMBL::Web::Document::Element::Tabs
+  ));
+
+  if ($self->{'has_species_bar'}) { 
+    $page->add_body_elements(qw(
+      species_bar      EnsEMBL::Web::Document::Element::SpeciesBar
+    ));
+  }
+  
+  if ($self->{'has_tabs'}) { 
+    $page->add_body_elements(qw(
+      tabs            EnsEMBL::Web::Document::Element::Tabs
+    ));
+  }
+  
+  $page->add_body_elements(qw(
     navigation       EnsEMBL::Web::Document::Element::Navigation
     tool_buttons     EnsEMBL::Web::Document::Element::ToolButtons
     summary          EnsEMBL::Web::Document::Element::Summary
@@ -88,10 +104,18 @@ sub render_masthead {
   my ($self, $elements) = @_;
 
   ## MASTHEAD & GLOBAL NAVIGATION
+  my $masthead_class = '';
+  if ($self->{'has_species_bar'}) {
+    $masthead_class = $self->{'has_tabs'} ? ' bar_and_tabs' : ' bar_only';
+  }
+  elsif ($self->{'has_tabs'}) {
+    $masthead_class = ' tabs_only';
+  }
+
   return qq(
   <div id="min_width_container">
     <div id="min_width_holder">
-      <div id="masthead" class="js_panel">
+      <div id="masthead" class="js_panel$masthead_class">
         <input type="hidden" class="panel_type" value="Masthead" />
         <div class="logo_holder">$elements->{'logo'}</div>
         <div class="mh print_hide">
@@ -108,6 +132,7 @@ sub render_content {
   my $page = $self->page;
 
   ## LOCAL NAVIGATION & MAIN CONTENT
+  my $sp_bar      = $elements->{'species_bar'} ? qq(<div class="spbar_holder">$elements->{'species_bar'}</div>) : '';
   my $tabs        = $elements->{'tabs'} ? qq(<div class="tabs_holder print_hide">$elements->{'tabs'}</div>) : '';
 
   my $icons       = $page->icon_bar if $page->can('icon_bar');  
@@ -131,6 +156,7 @@ sub render_content {
   }
 
   return qq(
+        $sp_bar
         $tabs
         $icons
       </div>

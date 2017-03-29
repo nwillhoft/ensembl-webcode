@@ -1,6 +1,6 @@
 /*
  * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
- * Copyright [2016] EMBL-European Bioinformatics Institute
+ * Copyright [2016-2017] EMBL-European Bioinformatics Institute
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ Ensembl.Panel.TextSequence = Ensembl.Panel.Content.extend({
 
   fixKey: function() {
     if (!this.elLk.keyBox) {
-      this.elLk.keyBox = this.el.find('._adornment_key').first();
+      this.elLk.keyBox = this.el.parents('.js_panel').find('._adornment_key').first();
     }
     if (!this.elLk.keyBoxToggler) {
       this.elLk.keyBoxToggler = $('<div class="toggler"><span class="open">&#9660;</span><span>&#9650;</span></div>');

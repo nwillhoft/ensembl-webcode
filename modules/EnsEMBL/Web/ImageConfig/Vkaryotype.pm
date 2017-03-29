@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ sub init_cacheable {
     all_chromosomes => 'yes',
   });
 
-  $self->create_menus('ideogram', 'user_data');
+  $self->add_menus('ideogram', 'user_data');
 
   $self->add_tracks('ideogram',
     [ 'drag_left', '', 'Vdraggable', { display => 'normal', part => 0, menu => 'no' }],

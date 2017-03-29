@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,6 +20,9 @@ limitations under the License.
 package EnsEMBL::Web::OldLinks;
 
 ### Redirect URLs for both pre-51-style URLs and new/renamed pages in archive links 
+
+### Don't think this is actually being used, see Apache/Handlers.pm
+
 
 use strict;
 
@@ -182,6 +185,8 @@ our %archive_mapping = (
                         'StructuralVariation/Context'             => { 'initial_release' => 60 },
                         'StructuralVariation/Mappings'            => { 'initial_release' => 70 },
                         'StructuralVariation/Phenotype'           => { 'initial_release' => 70 },
+			                  'StructuralVariation/Summary'             => { 'renamed' => 'StructuralVariation/Explore' },
+                        'StructuralVariation/Explore'             => { 'formerly' => { 64 => 'StructuralVariation/Summary'} },
 
                         'Regulation/Summary'                      => { 'initial_release' => 56 },
                         'Regulation/Cell_line'                    => { 'initial_release' => 58 },

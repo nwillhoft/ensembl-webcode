@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -100,9 +100,8 @@ sub requesting_country {
   my $self = shift;
   my $sd = $self->hub->species_defs;
 
-  my $geocity_dat_file = $sd->ENSEMBL_SERVERROOT;
-  $geocity_dat_file .= $sd->GEOCITY_DAT || '/geocity/GeoLiteCity.dat';
-  return unless ( -e $geocity_dat_file );
+  my $geocity_dat_file = $sd->GEOCITY_DAT;
+  return unless ( $geocity_dat_file && -e $geocity_dat_file );
 
   my $r    = Apache2::RequestUtil->can('request') ? Apache2::RequestUtil->request : undef;
   my $ip = $r->headers_in->{'X-Forwarded-For'} || $r->connection->remote_ip;
@@ -361,6 +360,7 @@ sub make_directory {
 }
 
 # Creates a temporary file name and makes sure its parent directory exists
+# TODO - check if this is actually used anywhere
 sub temp_file_create {
   my $self = shift;
   

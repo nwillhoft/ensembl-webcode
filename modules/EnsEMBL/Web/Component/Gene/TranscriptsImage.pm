@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -56,7 +56,9 @@ sub content {
   
   $node->set('display', 'transcript_label') if $node && $node->get('display') eq 'off';
 
-  $image_config->{'data_by_cell_line'} = $self->new_object('Slice', $gene_slice, $object->__data)->get_cell_line_data_closure($image_config) if keys %{$self->hub->species_defs->databases->{'DATABASE_FUNCGEN'}{'tables'}{'cell_type'}{'ids'}};
+  if ( $self->hub->species_defs->databases->{'DATABASE_FUNCGEN'} ) {
+    $image_config->{'data_by_cell_line'} = $self->new_object('Slice', $gene_slice, $object->__data)->get_cell_line_data_closure($image_config) if keys %{$self->hub->species_defs->databases->{'DATABASE_FUNCGEN'}{'tables'}{'cell_type'}{'ids'}};
+  }
 
   my $image = $self->new_image($gene_slice, $image_config, [ $gene->stable_id ]);
   

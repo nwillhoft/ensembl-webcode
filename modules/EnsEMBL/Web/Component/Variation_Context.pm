@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -242,6 +242,10 @@ sub regulatory_feature_table {
       }
     }
   }
+
+  if ( !$rows || scalar(@{$rows}) < 1 ) {
+    return '<p>No regulatory features associated with this variant.</p>';
+  }
   
   return $self->toggleable_table('Regulatory features', 'reg', $self->new_table($columns, $rows, { data_table => 1, sorting => [ 'location asc' ], data_table_config => {iDisplayLength => 25} }), 1);
 }
@@ -277,6 +281,10 @@ sub constrained_element_table {
         };
       }
     }
+  }
+
+  if ( !$rows || scalar(@{$rows}) < 1 ) {
+    return '<p>No constrained elements associated with this variant.</p>';
   }
   
   return $self->toggleable_table('Constrained elements', 'cons', $self->new_table($columns, $rows, { data_table => 1, sorting => [ 'location asc' ], data_table_config => {iDisplayLength => 25} }), 1);

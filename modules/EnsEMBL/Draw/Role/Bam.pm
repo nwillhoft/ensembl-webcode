@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -598,7 +598,7 @@ use Digest::MD5 qw(md5_hex);
 our $cbuild_dir;
 BEGIN {
   my $name = $SiteDefs::ENSEMBL_COHORT;
-  $cbuild_dir = "$SiteDefs::ENSEMBL_WEBROOT/.cbuild-".md5_hex($name);
+  $cbuild_dir = "$SiteDefs::ENSEMBL_SYS_DIR/.cbuild-".md5_hex($name);
   mkdir $cbuild_dir unless -e $cbuild_dir;
 };
 

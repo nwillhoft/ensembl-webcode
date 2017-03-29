@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -104,7 +104,7 @@ sub form_fields {
       { 'value' => 'label',   'caption' => 'Sequence Ontology terms' },
       { 'value' => 'display', 'caption' => 'Old Ensembl terms'       },
     ]
-  });
+  };
 
   # Add context selection
   $fields->{'context'} = {
@@ -179,7 +179,7 @@ sub _variation_options {
       foreach my $key (keys %{$options{$category}}) {
         $self->{'_var_options'}{lc $key} = {
           'category'  => $category,
-          'label'     => $options{$category}{$key}[1]
+          'label'     => $options{$category}{$key}[1],
           'value'     => $options{$category}{$key}[0],
         };
       }

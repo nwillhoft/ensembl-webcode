@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -347,7 +347,7 @@ sub _content {
         $evidence_ends{$hit_name}{'end'}   = $hit_seq_region_end   if $hit_seq_region_end > $evidence_ends{$hit_name}{'end'};
 
         # ignore duplicate entries
-        next EVI if defined @{$evidence_ends{$hit_name}{'starts_and_ends'}} && grep $_ eq "$hit_seq_region_start:$hit_seq_region_end", @{$evidence_ends{$hit_name}{'starts_and_ends'}};
+        next EVI if @{$evidence_ends{$hit_name}{'starts_and_ends'}||[]} && grep $_ eq "$hit_seq_region_start:$hit_seq_region_end", @{$evidence_ends{$hit_name}{'starts_and_ends'}};
         
         push @{$evidence_ends{$hit_name}{'starts_and_ends'}}, "$hit_seq_region_start:$hit_seq_region_end";
 

@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -412,24 +412,6 @@ sub view {
 }
 
 sub build_sequence {
-  my ($self, $sequence, $config, $exclude_key) = @_;
-  my $line_numbers   = $config->{'line_numbers'};
-
-  my $view = $self->view;
-  $view->width($config->{'display_width'});
-
-  $view->transfer_data($sequence,$config);
-
-  $view->legend->final if $view->phase == 2;
-  $view->legend->compute_legend($self->hub,$config);
-
-  $view->output->more($self->hub->apache_handle->unparsed_uri) if $view->phase==1;
-  my $out = $self->view->output->build_output($config,$line_numbers,@{$self->view->sequences}>1,$self->id);
-  $view->reset;
-  return $out;
-}
-
-sub build_sequence_new {
   my ($self, $sequences, $config, $exclude_key) = @_;
   my $line_numbers   = $config->{'line_numbers'};
 

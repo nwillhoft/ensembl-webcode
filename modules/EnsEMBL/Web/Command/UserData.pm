@@ -1,7 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
-Copyright [2016] EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -70,18 +70,17 @@ sub upload {
     ## Get description from file and save to session
     my $description = $iow->get_metadata_value('description');
     if ($description) {
-      if ($hub->user) {
-        my ($record) = grep {$_->code eq $file->code} $hub->user->get_records('uploads');
-        if ($record) {
-          $record->data->{'description'} = $description;
-          $record->save('user' => $hub->user);
-        }
+
+      my ($record_owner, $data);
+      for (grep $_, $hub->user, $hub->session) {
+        $data = $_->get_record_data({'type' => 'upload', 'code' => $file->code});
+        $record_owner = $_ and last if keys %$data;
       }
-      else {
-        my $data = $hub->session->get_record_data({'type' => 'upload', 'code' => $file->code});
-        $data->{'description'} = $description if keys %$data;
-        $hub->session->set_record_data($data);
-      }
+
+      $data = {'type' => 'upload', 'code' => $file->code} unless keys %{$data || {}};
+      $data->{'description'} = $description;
+
+      ($record_owner || $hub->user || $hub->session)->set_record_data($data);
     }
 
     ## Look for the nearest feature
@@ -173,18 +172,20 @@ sub attach {
         my $t_code = join('_', md5_hex($name . $current_species . $assembly . $url), 
                                   $hub->session->session_id); 
         unless ($is_old) {
-          my $data = $hub->session->set_record_data({
-                                        type        => 'url',
-                                        code        => $t_code,
-                                        url         => $url,
-                                        name        => $name,
-                                        format      => $attachable->name,
-                                        style       => $attachable->trackline,
-                                        species     => $current_species,
-                                        assembly    => $assembly,
-                                        timestamp   => time,
-                                        %$options,
-                                        });
+          my $record = {
+                          type      => 'url',
+                          code      => $t_code,
+                          url       => $url,
+                          name      => $name,
+                          format    => $attachable->name,
+                          style     => $attachable->trackline,
+                          species   => $current_species,
+                          assembly  => $assembly,
+                          timestamp => time,
+                          %$options,
+                        };
+          $record->{'disconnected'} = 0 if lc($attachable->name) eq 'trackhub';
+          my $data = $hub->session->set_record_data($record);
 
           $hub->configure_user_data('url', $data);
 
