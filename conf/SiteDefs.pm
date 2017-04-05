@@ -243,14 +243,6 @@ our $ENSEMBL_ALIGNMENTS_HIERARCHY = ['LASTZ', 'CACTUS_HAL_PW', 'TBLAT', 'LPATCH'
 
 
 ###############################################################################
-## Species
-###############################################################################
-our $ENSEMBL_PRIMARY_SPECIES      = 'Homo_sapiens'; # Default species
-our $ENSEMBL_SECONDARY_SPECIES    = undef;
-###############################################################################
-
-
-###############################################################################
 # Variables exported for ENV for apache processes
 our $ENSEMBL_SETENV                   = {}; # Map of ENV variables nams to SiteDefs variable names for setting ENV (check _set_env method)
 $ENSEMBL_SETENV->{'http_proxy'}       = 'HTTP_PROXY';
