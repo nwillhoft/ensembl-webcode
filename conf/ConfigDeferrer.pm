@@ -25,6 +25,8 @@ use strict;
 use warnings;
 
 use Exporter qw(import);
+use Digest::MD5 qw(md5_hex);
+use Data::Dumper;
 
 our @EXPORT_OK    = qw(defer register_deferred_configs build_deferred_configs required validate_required_configs);
 our %EXPORT_TAGS  = ('all' => [ @EXPORT_OK ]);
@@ -38,11 +40,16 @@ sub defer (&) {
   return $conf;
 }
 
-sub required (&) {
+sub required {
   ## Subroutine to be used to declare the configs that needs to be redeclared in another plugin
-  my ($conf) = @_;
-  $REQUIRED_CONFIGS{"$conf"} = 1;
-  return $conf;
+  my $val = '__UNDECLARED_REQUIRED_CONFIG__';
+
+  if (@_) {
+    $val .= sprintf '(%s)', md5_hex(sprintf '%s%s%s', caller);
+    $REQUIRED_CONFIGS{$val} = $_[0];
+  }
+
+  return $val;
 }
 
 sub register_deferred_configs {
@@ -116,13 +123,20 @@ sub validate_required_configs {
       my $sym       = *$sym_name;
       next unless ref(\$sym) eq 'GLOB';
 
-      if (*{$sym}{'SCALAR'} && ref *{$sym}{'SCALAR'} eq 'REF' && exists $REQUIRED_CONFIGS{"$$sym"}) {
-        push @missing, $sym_name;
+      if (defined $$sym && !ref $$sym && !index("$$sym", required())) {
+        push @missing, {$sym_name, $REQUIRED_CONFIGS{"$$sym"}};
       }
     }
   }
 
-  die(sprintf("Following config%s %s required. Please declare in your plugin's SiteDefs.\n%s\n", @missing > 1 ? ('s', 'are') : ('', 'is'), join("\n", @missing))) if @missing;
+  die(sprintf("Following config%s %s required. Please declare in your plugin's SiteDefs.\n%s\n", @missing > 1 ? ('s', 'are') : ('', 'is'), join("\n", map { my ($k) = keys %$_; sprintf ($_->{$k} ? '  $%s = %s;' : '  $%s', $k, _str($_->{$k}))} @missing))) if @missing;
+}
+
+sub _str {
+  ## @private
+  my $ref = shift;
+
+  return ref $ref ? Data::Dumper->new([ $ref ])->Sortkeys(1)->Useqq(1)->Terse(1)->Indent(0)->Maxdepth(0)->Dump  : "'$ref'";
 }
 
 1;
