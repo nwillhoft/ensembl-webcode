@@ -57,6 +57,11 @@ our $ENSEMBL_HTTPD_CONFIG_FILE    = "$ENSEMBL_WEBROOT/conf/httpd.conf";         
 our $ENSEMBL_MIN_SPARE_SERVERS    = 20;                                                   # For Apache MinSpareServers directive
 our $ENSEMBL_MAX_SPARE_SERVERS    = 50;                                                   # For Apache MaxSpareServers directive
 our $ENSEMBL_START_SERVERS        =  7;                                                   # For Apache StartServers directive
+our $ENSEMBL_DB_IDLE_LIMIT     = 12;
+              # Maximum number of connections to "carry through" to next
+              # connection
+our $ENSEMBL_DB_TIDY_DEBUG     = 0;
+              # Debug conneciton management.
 our $ENSEMBL_PORT                 = 80;                                                   # Port to run Apache (for Listen directive)
 our $ENSEMBL_SERVERNAME           = 'www.mydomain.org';                                   # For Apache ServerName directive (External domain name for the web server)
 our $ENSEMBL_SERVERADMIN          = 'webmaster&#064;mydomain.org';                        # For Apache ServerAdmin directive
@@ -83,7 +88,7 @@ our $SITE_LOGO_HEIGHT = '';
 our $SITE_LOGO_ALT = '';
 our $SITE_LOGO_HREF = '';
 
-our $ENSEMBL_CONFIG_FILENAME          = 'config.packed';
+our $ENSEMBL_CONFIG_FILENAME_SUFFIX   = 'config.packed';
 our $ENSEMBL_CONFIG_BUILD             = 0; # Build config on server startup? Setting to 0 will try to recover from $ENSEMBL_CONFIG_FILENAME on startup
 our $ENSEMBL_SITETYPE                 = 'Ensembl';
 our $ENSEMBL_HELPDESK_EMAIL           = defer { $ENSEMBL_SERVERADMIN };   # Email address for contact form and help pages
@@ -103,6 +108,7 @@ our $ENSEMBL_SITE_DIR                 = '';     # URL Path if site is served fro
 our $ENSEMBL_STATIC_SERVER            = '';     # Static server address - if static content (js/css/images) is served from a different server
 our $SYSLOG_COMMAND                   = sub { warn "$_[0]\n"; };  # command/subroutine called by `syslog` - check EnsEMBL::Web::Utils::Syslog
 our $TIDY_USERDB_CONNECTIONS          = 1;      # Clear user/session db connections after request is finished
+our $SERVER_ERRORS_TO_LOGS            = 1;      # Send all server exception stack traces to logs and send a unique error Id on the browser
 ###############################################################################
 
 
@@ -230,7 +236,6 @@ our $ENSEMBL_MART_SERVER          = ''; # Server address if mart server is runni
 ###############################################################################
 ## Memcached specific configs
 our $ENSEMBL_MEMCACHED  = {}; # Keys 'server' [list of server:port], 'debug' [0|1] and 'default_exptime'. See EnsEMBL::Web::Cache in public-plugins for details.
-our $ENSEMBL_COHORT     = defer { scalar keys %{$ENSEMBL_MEMCACHED || {}} ? Sys::Hostname::Long::hostname_long().":".$ENSEMBL_SERVERROOT : undef };
 ###############################################################################
 
 
@@ -302,8 +307,10 @@ our $ENSEMBL_PLUGINS      = []; # List of all plugins enabled - populated by _po
 our $ENSEMBL_IDS_USED     = {}; # All plugins with extra info for perl.startup output - populated by _populate_plugins_list()
 our $ENSEMBL_PLUGINS_USED = {}; # Identities being used for plugins - needed by perl.startup - populated by _populate_plugins_list()
 our $ENSEMBL_PLUGIN_ROOTS = []; # Populated by _update_conf()
+our $ENSEMBL_COHORT       = ''; # Populated by import
 our $ENSEMBL_BASE_URL;          # Populated by import
 our $ENSEMBL_SITE_URL;          # Populated by import
+our $ENSEMBL_CONFIG_FILENAME;   # Populated by import
 our $ENSEMBL_STATIC_SERVERNAME; # Populated by import
 our $ENSEMBL_STATIC_BASE_URL;   # Populated by import
 our $ENSEMBL_TEMPLATE_ROOT;     # Populated by import
@@ -323,6 +330,7 @@ sub import {
 
   # Populate $ENSEMBL_PLUGINS (Not loading all plugins' SiteDefs yet)
   _populate_plugins_list($ENSEMBL_SERVERROOT, $ENSEMBL_WEBROOT, $ENV{'ENSEMBL_PLUGINS_ROOTS'});
+  die "ERROR: ENSEMBL_PLUGINS not populated\n" unless scalar @$ENSEMBL_PLUGINS;
 
   # Load all plugins SiteDefs
   _update_conf();
@@ -346,6 +354,12 @@ sub import {
   $ENSEMBL_STATIC_SERVERNAME = $ENSEMBL_STATIC_SERVER || $ENSEMBL_SERVERNAME;
   $ENSEMBL_STATIC_SERVER     = "$ENSEMBL_PROTOCOL://$ENSEMBL_STATIC_SERVER" if $ENSEMBL_STATIC_SERVER;
   $ENSEMBL_STATIC_BASE_URL   = $ENSEMBL_STATIC_SERVER || $ENSEMBL_BASE_URL;
+  $ENSEMBL_COHORT            = [ grep $ENSEMBL_IDS_USED->{$_}, sort keys %$ENSEMBL_IDS_USED ]->[0] || $ENSEMBL_SERVERROOT;
+
+  ### Quick hack to add machine name to config.packed
+  $ENSEMBL_COHORT = $ENSEMBL_COHORT =~ /^cluster:/ ? "$ENSEMBL_SERVERNAME-$ENSEMBL_COHORT" : $ENSEMBL_COHORT;
+
+  $ENSEMBL_CONFIG_FILENAME   = sprintf "%s.%s", $ENSEMBL_COHORT =~ s/\W+/-/gr, $ENSEMBL_CONFIG_FILENAME_SUFFIX;
   $ENSEMBL_TEMPLATE_ROOT     = "$ENSEMBL_SERVERROOT/biomart-perl/conf";
 
   _verbose_params() if $_VERBOSE;
@@ -614,23 +628,8 @@ sub _set_env {
 }
 
 sub memcached {
-  my $pars    = shift;
-  my $args    = {};
   my @caller  = caller;
-
-  warn qq(SiteDefs::memcached() is deprecated. Set \$SiteDefs::ENSEMBL_MEMCACHED variable to a ref of hash containing keys 'server' [list of server:port], 'debug' and 'default_exptime' at $caller[1] line $caller[2].\n);
-
-  unless (scalar @{$pars->{'servers'} || []}) {
-    $SiteDefs::ENSEMBL_MEMCACHED = undef;
-    return;
-  }
-
-  $args->{'servers'}          = delete $pars->{'servers'};
-  $args->{'debug'}            = $pars->{'debug'} ? 1 : 0;
-  $args->{'default_exptime'}  = $pars->{'default_exptime'} if exists $pars->{'default_exptime'};
-
-  $SiteDefs::ENSEMBL_MEMCACHED  = $pars;
-  $SiteDefs::ENSEMBL_COHORT     = Sys::Hostname::Long::hostname_long().":".$ENSEMBL_SERVERROOT;
+  die qq(SiteDefs::memcached() is not in use anymore. Set \$SiteDefs::ENSEMBL_MEMCACHED variable to a ref of hash containing keys 'server' [list of server:port], 'debug' and 'default_exptime' at $caller[1] line $caller[2].\n);
 }
 
 1;
