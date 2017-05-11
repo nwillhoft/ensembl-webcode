@@ -67,11 +67,13 @@ sub add_links {
 }
 
 sub helptip {
-  ## Returns a dotted underlined element with given text and hover helptip
+  ## Returns an element with given text and hover helptip
   ## @param Display html
   ## @param Tip html
-  my ($display_html, $tip_html) = @_;
-  return $tip_html ? sprintf('<span class="ht _ht"><span class="_ht_tip hidden">%s</span>%s</span>', encode_entities($tip_html), $display_html) : $display_html;
+  ## @param Style string (optional) - element has dotted underline unless set to 'plain'
+  my ($display_html, $tip_html, $style) = @_;
+  my $dotted = $style eq 'plain' ? '' : ' ht';
+  return $tip_html ? sprintf('<span class="_ht%s"><span class="_ht_tip hidden">%s</span>%s</span>', $dotted, encode_entities($tip_html), $display_html) : $display_html;
 }
 
 sub glossary_helptip {

@@ -24,6 +24,7 @@ use warnings;
 no warnings 'uninitialized';
 
 use HTML::Entities qw(encode_entities);
+use EnsEMBL::Web::Utils::FormatText qw(helptip);
 
 use base qw(EnsEMBL::Web::Component::Gene);
 
@@ -47,6 +48,8 @@ sub content {
   return sprintf '<p>%s</p>', 'This identifier is not in the current EnsEMBL database' if $object->Obj->isa('Bio::EnsEMBL::ArchiveStableId');
 
   my $html = "";
+
+  $html .= $self->status_box;
  
   my @warnings = $self->status_warnings;
   if(@warnings>1 and $warnings[0] and $warnings[1]) {
@@ -61,6 +64,48 @@ sub content {
   $html .= $self->transcript_table;
 
   return $html;
+}
+
+sub status_box {
+  my $self = shift;
+  my $html;
+
+  my $obj   = $self->object->Obj;
+  my $dxr   = $obj->can('display_xref') ? $obj->display_xref : undef;
+  my $label = $dxr ? $dxr->display_id : $obj->stable_id;
+
+  my ($text, $class, $url);
+  if ($self->hub->param('open')) {
+    $text = 'Hide details';
+    $url = $self->hub->url;
+  }
+  else {
+    $text = 'More...';
+    $url = $self->hub->url({'open' => 1});
+    $class = ' class="hide"';
+  }
+
+  my $padding = '&nbsp;' x 20;
+  my $star = helptip('<img src="/img/star_disabled.png" />', 'Favourite this gene', 'plain');
+  my $bell = helptip('<img src="/img/bell_disabled.png" />', 'Notify me of changes to this gene', 'plain');
+
+  $html = qq(<div class="round-box info-box unbordered float-right">
+<h3>What's New in Gene $label $padding $star $bell</h3> 
+<p><b>Last updated</b>: Release 88 (March 2017)</p>
+<p style="text-align:right"><a href="$url">$text</a></p>
+  <div$class>
+  <p><img src="/img/bullet_add.png" style="padding-right:8px;vertical-align:middle" /><b>New transcript</b></p>
+  <p style="padding-left:24px">$label-013 (Nonsense-mediated decay)</p>
+  <p><img src="/img/bullet_remove.png" style="padding-right:8px;vertical-align:middle" /><b>Retired transcript</b></p>
+  <p style="padding-left:24px">$label-005 (Protein-coding)</p>
+  <p style="text-align:right"><span class="button">View history</span></p>
+
+    
+  </div>
+</div>);
+
+  return $html;
+
 }
 
 1;
