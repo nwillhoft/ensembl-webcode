@@ -95,10 +95,11 @@ sub status_box {
 <p style="text-align:right"><a href="$url">$text</a></p>
   <div$class>
   <h4>Recent changes</h4>
-  <p><img src="/img/bullet_add.png" style="padding-right:8px;vertical-align:middle" /><b>New transcript</b></p>
-  <p style="padding-left:24px">$label-013 (Nonsense-mediated decay)</p>
+  <p><img src="/img/bullet_add.png" style="padding-right:8px;vertical-align:middle" /><b>New transcripts</b></p>
+  <p style="padding-left:24px">$label-213 (ENST00000639564.1)</p>
+  <p style="padding-left:24px">$label-072 (ENST00000639562.1)</p>
   <p><img src="/img/bullet_remove.png" style="padding-right:8px;vertical-align:middle" /><b>Retired transcript</b></p>
-  <p style="padding-left:24px">$label-005 (Protein-coding)</p>
+  <p style="padding-left:24px">$label-004 (ENST00000626224.2)</p>
   <p style="text-align:right"><a href="https://ens-hsr.github.io/gene-history-proto/#gene=$label" class="button">View update history</a></p>
 
     
