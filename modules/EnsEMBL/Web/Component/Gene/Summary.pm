@@ -94,11 +94,12 @@ sub status_box {
 <p><b>Last updated</b>: Release 88 (March 2017)</p>
 <p style="text-align:right"><a href="$url">$text</a></p>
   <div$class>
+  <h4>Recent changes</h4>
   <p><img src="/img/bullet_add.png" style="padding-right:8px;vertical-align:middle" /><b>New transcript</b></p>
   <p style="padding-left:24px">$label-013 (Nonsense-mediated decay)</p>
   <p><img src="/img/bullet_remove.png" style="padding-right:8px;vertical-align:middle" /><b>Retired transcript</b></p>
   <p style="padding-left:24px">$label-005 (Protein-coding)</p>
-  <p style="text-align:right"><span class="button">View history</span></p>
+  <p style="text-align:right"><a href="https://ens-hsr.github.io/gene-history-proto/#gene=$label" class="button">View update history</a></p>
 
     
   </div>
