@@ -68,26 +68,32 @@ sub content {
 
 sub status_box {
   my $self = shift;
+  my $fave = $self->hub->param('fave');
   my $html;
 
   my $obj   = $self->object->Obj;
   my $dxr   = $obj->can('display_xref') ? $obj->display_xref : undef;
   my $label = $dxr ? $dxr->display_id : $obj->stable_id;
 
-  my ($text, $class, $url);
+  my ($text, $class, $url, $open);
   if ($self->hub->param('open')) {
     $text = 'Hide details';
-    $url = $self->hub->url;
+    $open = 1;
+    $url = $self->hub->url({'fave' => $fave});
   }
   else {
     $text = 'More...';
-    $url = $self->hub->url({'open' => 1});
+    $open = 0;
+    $url = $self->hub->url({'open' => 1, 'fave' => $fave});
     $class = ' class="hide"';
   }
 
+  my $fave_url = $self->hub->url({'open' => $open, 'fave' => 1});
+  my $fave_img = $fave ? 'star_enabled' : 'star_disabled';
+
   my $padding = '&nbsp;' x 20;
-  my $star = helptip('<img src="/img/star_disabled.png" />', 'Favourite this gene', 'plain');
-  my $bell = helptip('<img src="/img/bell_disabled.png" />', 'Notify me of changes to this gene', 'plain');
+  my $star = helptip(qq(<a href="$fave_url"><img src="/img/$fave_img.png" /></a>), 'Favourite this gene', 'plain');
+  my $bell = helptip('<a href="/Multi/Account/Register" class="modal_link"><img src="/img/bell_disabled.png" /></a>', 'Notify me of changes to this gene', 'plain');
 
   $html = qq(<div class="round-box info-box unbordered float-right">
 <h3>What's New in Gene $label $padding $star $bell</h3> 
@@ -100,7 +106,7 @@ sub status_box {
   <p style="padding-left:24px">$label-072 (ENST00000639562.1)</p>
   <p><img src="/img/bullet_remove.png" style="padding-right:8px;vertical-align:middle" /><b>Retired transcript</b></p>
   <p style="padding-left:24px">$label-004 (ENST00000626224.2)</p>
-  <p style="text-align:right"><a href="https://ens-hsr.github.io/gene-history-proto/#gene=$label" class="button">View update history</a></p>
+  <p style="text-align:right"><a href="https://ens-hsr.github.io/gene-history-proto/#gene=$label" class="button popup">View update history</a></p>
 
     
   </div>
