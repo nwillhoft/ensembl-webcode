@@ -61,6 +61,7 @@ sub ICON_MAPPINGS {
 sub USERDATA_FORMATS {
   return {
     'bam'         => {'ext' => 'bam',     'label' => 'BAM',       'display' => 'graph',   'limit' => 'remote'},
+    'bcf'         => {'ext' => 'bcf',     'label' => 'BCF',       'display' => 'graph'},
     'bed'         => {'ext' => 'bed',     'label' => 'BED',       'display' => 'feature'},
     'bedgraph'    => {'ext' => 'bed',     'label' => 'bedGraph',  'display' => 'graph'},
     'bigbed'      => {'ext' => 'bb',      'label' => 'BigBed',    'display' => 'graph',   'limit' => 'remote'},

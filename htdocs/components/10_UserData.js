@@ -19,19 +19,23 @@
 
 Ensembl.Panel.UserData = Ensembl.Panel.extend({
   formats: {
-    'bam'  : 'BAM',
-    'bb'   : 'BIGBED',
-    'bed'  : 'BED',
-    'bgr'  : 'BEDGRAPH',
-    'bw'   : 'BIGWIG',
-    'cram' : 'CRAM',
-    'gff'  : 'GTF',
-    'gff3' : 'GFF3',
-    'gtf'  : 'GTF',
-    'psl'  : 'PSL',
-    'vcf'  : 'VCF',
-    'vep'  : 'VEP',
-    'wig'  : 'WIG'
+    'bam'     : 'BAM',
+    'bcf'     : 'BCF',
+    'bb'      : 'BIGBED',
+    'bigbed'  : 'BIGBED',
+    'bed'     : 'BED',
+    'bdg'     : 'BEDGRAPH',
+    'bgr'     : 'BEDGRAPH',
+    'bw'      : 'BIGWIG',
+    'bigwig'  : 'BIGWIG',
+    'cram'    : 'CRAM',
+    'gff'     : 'GTF',
+    'gff3'    : 'GFF3',
+    'gtf'     : 'GTF',
+    'psl'     : 'PSL',
+    'vcf'     : 'VCF',
+    'vep'     : 'VEP',
+    'wig'     : 'WIG'
   },
 
   init: function () {
