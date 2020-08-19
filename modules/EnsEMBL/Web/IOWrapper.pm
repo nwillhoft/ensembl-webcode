@@ -36,10 +36,6 @@ use EnsEMBL::Draw::Utils::ColourMap;
 use EnsEMBL::Web::Utils::DynamicLoader qw(dynamic_use);
 
 sub new {
-  ### Constructor
-  ### Instantiates a parser for the appropriate file type 
-  ### and opens the file for reading
-  ### @param file EnsEMBL::Web::File object
   my ($class, $self) = @_;
 
   $self->{'greyscale'} = [qw(e2e2e2 c6c6c6 aaaaaa 8d8d8d 717171 555555 383838 1c1c1c 000000)]; 
@@ -64,35 +60,40 @@ sub open {
   ## based on the format of the file given
   my ($file, %args) = @_;
 
+  ## Try to get the parser class from ensembl-io
   my %format_to_class = Bio::EnsEMBL::IO::Utils::format_to_class;
   my $format          = $file->get_format;
-  my $subclass = $format_to_class{$format};
-  return undef unless $subclass;
-  my $class = 'EnsEMBL::Web::IOWrapper::'.$subclass;
+  my $io_class        = $format_to_class{$format};
 
-  my $wrapper;
+  my $class = $io_class ? 'EnsEMBL::Web::IOWrapper::'.$io_class 
+                        : 'EnsEMBL::Web::IOWrapper::'.ucfirst $format;
+
+
+  my ($wrapper, $parser);
   if (dynamic_use($class, 1)) {
-    my $parser;
-    if ($file->source eq 'url') {
-      my $result = $file->read;
-      if ($result->{'content'}) {
-        $parser = Bio::EnsEMBL::IO::Parser::open_content_as($format, $result->{'content'});
+    if ($io_class) {
+      ## Instantiate parser
+      if ($file->source eq 'url') {
+        my $result = $file->read;
+        if ($result->{'content'}) {
+          $parser = Bio::EnsEMBL::IO::Parser::open_content_as($format, $result->{'content'});
+        }
       }
-    }
-    else {
-      ## Open file from where we wrote to, otherwise it can cause issues
-      $parser = Bio::EnsEMBL::IO::Parser::open_as($format, $file->absolute_write_path);
+      else {
+        ## Open file from where we wrote to, otherwise it can cause issues
+        $parser = Bio::EnsEMBL::IO::Parser::open_as($format, $file->absolute_write_path);
+      }
+      return undef unless $parser;
     }
 
-    if ($parser) {
-      $wrapper = $class->new({
-                              'parser' => $parser, 
-                              'file'   => $file, 
-                              'format' => $format,
-                              %args,
-                              });
-    }  
+    $wrapper = $class->new({
+                      'parser' => $parser, 
+                      'file'   => $file, 
+                      'format' => $format,
+                       %args,
+                      });
   }
+
   return $wrapper;
 }
 

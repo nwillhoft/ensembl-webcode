@@ -50,6 +50,7 @@ sub upload {
   my $iow;
   unless ($error) {
     $iow  = EnsEMBL::Web::IOWrapper::open($file, 'hub' => $hub);
+    warn ">>> IOW $iow";
     if ($iow) {
       $error = $iow->validate;
     }
@@ -65,7 +66,7 @@ sub upload {
       code     => 'userdata_error',
       message  => "There was a problem uploading your data: $error.<br />Please try again.",
       function => '_error'
-    });
+    }) unless $hub->session->get_record_data({'type' => 'message', 'code' => 'userdata_error'});
   } else {
     ## Get name and description from file and save to session
     my $name        = $iow->get_metadata_value('name');

@@ -93,6 +93,7 @@ sub USERDATA_FORMATS {
     'cram'        => {'ext' => 'cram',    'label' => 'CRAM',      'display' => 'graph',   'limit' => 'remote'},
     'gff3'        => {'ext' => 'gff3',    'label' => 'GFF3',      'display' => 'feature'},
     'gtf'         => {'ext' => 'gff|gtf', 'label' => 'GFF2/GTF',  'display' => 'feature'},
+    'list'        => {'ext' => 'txt',     'label' => 'List of features',  'display' => 'feature'},
     'pairwise'    => {'ext' => 'txt',     'label' => 'Pairwise interactions', 'display' => 'feature'},
     'psl'         => {'ext' => 'psl',     'label' => 'PSL',       'display' => 'feature'},
     'trackhub'    => {'ext' => 'txt',     'label' => 'Track Hub', 'display' => 'graph',   'limit' => 'remote'},
